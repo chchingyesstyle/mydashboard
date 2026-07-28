@@ -79,6 +79,7 @@ export function createDashboardService(deps: {
   fetcher: typeof fetch;
   cache: CacheStore;
   now: () => Date;
+  darwinApiKey: string;
 }): () => Promise<DashboardPayload> {
   return async () => {
     const now = deps.now();
@@ -89,7 +90,7 @@ export function createDashboardService(deps: {
         now,
         freshForMs: 30_000,
         staleForMs: 5 * 60_000,
-        load: () => fetchDepartures(deps.fetcher, now)
+        load: () => fetchDepartures(deps.fetcher, now, deps.darwinApiKey)
       }),
       loadWithFallback({
         cache: deps.cache,

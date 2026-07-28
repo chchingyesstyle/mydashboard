@@ -13,6 +13,7 @@ interface WorkerDependencies {
 
 interface Env {
   ASSETS: Assets;
+  DARWIN_API_KEY: string;
 }
 
 const API_PATH = "/api/v1/dashboard";
@@ -88,7 +89,8 @@ export default {
       getDashboard: createDashboardService({
         fetcher: fetch,
         cache: (caches as CacheStorage & { readonly default: CacheStore }).default,
-        now: () => new Date()
+        now: () => new Date(),
+        darwinApiKey: env.DARWIN_API_KEY
       }),
       assets: env.ASSETS
     }).fetch(request);

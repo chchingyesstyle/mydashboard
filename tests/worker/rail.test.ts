@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchDepartures, normalizeHuxley } from "../../src/worker/providers/rail";
-import { huxleyFixture } from "../fixtures/huxley";
+import { fetchDepartures, normalizeDarwin } from "../../src/worker/providers/rail";
+import { darwinFixture } from "../fixtures/darwin";
 
-describe("Huxley rail provider", () => {
+describe("Darwin rail provider", () => {
   it("normalizes direct Euston departures from every operator", () => {
-    const services = normalizeHuxley(huxleyFixture);
+    const services = normalizeDarwin(darwinFixture);
 
     expect(services.map(({ operatorCode }) => operatorCode)).toEqual([
       "LO", "LM", "LM", "LM", "LM"
@@ -13,17 +13,17 @@ describe("Huxley rail provider", () => {
       "on_time", "on_time", "delayed", "cancelled", "unknown"
     ]);
     expect(services[3].reason).toBe(
-      "This service has been cancelled because of a shortage of train crew"
+      "A shortage of train crew"
     );
     expect(services.some(({ platform }) => platform === null)).toBe(true);
   });
 
   it("resolves both times for a delayed pre-midnight service viewed after midnight", () => {
-    const [service] = normalizeHuxley({
-      ...huxleyFixture,
+    const [service] = normalizeDarwin({
+      ...darwinFixture,
       generatedAt: "2026-07-28T23:10:00.000Z",
       trainServices: [{
-        ...huxleyFixture.trainServices[0],
+        ...darwinFixture.trainServices[0],
         serviceID: "late-service",
         std: "23:55",
         etd: "00:20"
@@ -34,37 +34,70 @@ describe("Huxley rail provider", () => {
     expect(service.expectedDeparture).toBe("2026-07-29T00:20:00+01:00");
   });
 
-  it("requests the configured Watford to Euston endpoint", async () => {
-    let requestedUrl = "";
-    const fetcher = (async (input: string | URL | Request) => {
-      requestedUrl = input.toString();
-      return new Response(JSON.stringify(huxleyFixture));
+  it("rejects non-canonical generated timestamps", () => {
+    expect(() => normalizeDarwin({
+      ...darwinFixture,
+      generatedAt: "28 July 2026 12:00"
+    })).toThrow("Darwin departures response was malformed");
+  });
+
+  it("requests every direct Watford to Euston departure through RDM", async () => {
+    let request: Request | undefined;
+    const fetcher = (async (
+      input: string | URL | Request,
+      init?: RequestInit
+    ) => {
+      request = new Request(input, init);
+      return new Response(JSON.stringify(darwinFixture));
     }) as typeof fetch;
 
-    await fetchDepartures(fetcher, new Date("2026-07-28T11:55:00.000Z"));
-
-    expect(requestedUrl).toBe(
-      "https://national-rail-api.davwheat.dev/departures/WFJ/to/EUS/10"
+    await fetchDepartures(
+      fetcher,
+      new Date("2026-07-28T11:55:00.000Z"),
+      "consumer-key"
     );
+
+    const url = new URL(request!.url);
+    expect(url.origin + url.pathname).toBe(
+      "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard/WFJ"
+    );
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      numRows: "150",
+      filterCrs: "EUS",
+      filterType: "to",
+      timeOffset: "0",
+      timeWindow: "120"
+    });
+    expect(request!.headers.get("x-apikey")).toBe("consumer-key");
+    expect(request!.url).not.toContain("consumer-key");
+  });
+
+  it("does not call Darwin without a configured API key", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+
+    await expect(fetchDepartures(fetcher, new Date(), "")).rejects.toThrow(
+      "Darwin API key is not configured"
+    );
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("throws a provider-specific error for a failed response", async () => {
     const fetcher = (async () => new Response("upstream error", { status: 503 })) as typeof fetch;
 
-    await expect(fetchDepartures(fetcher, new Date())).rejects.toThrow(
-      "Huxley departures request failed"
+    await expect(fetchDepartures(fetcher, new Date(), "consumer-key")).rejects.toThrow(
+      "Darwin departures request failed"
     );
   });
 
   it("throws a provider-specific error for malformed responses", async () => {
     const fetcher = (async () => new Response(JSON.stringify({ generatedAt: "invalid" }))) as typeof fetch;
 
-    await expect(fetchDepartures(fetcher, new Date())).rejects.toThrow(
-      "Huxley departures response was malformed"
+    await expect(fetchDepartures(fetcher, new Date(), "consumer-key")).rejects.toThrow(
+      "Darwin departures response was malformed"
     );
   });
 
-  it("aborts the Huxley request after seven seconds", async () => {
+  it("aborts the Darwin request after seven seconds", async () => {
     const controller = new AbortController();
     const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
     let requestWasAborted = false;
@@ -75,7 +108,7 @@ describe("Huxley rail provider", () => {
       });
     })) as typeof fetch;
 
-    const departures = fetchDepartures(fetcher, new Date());
+    const departures = fetchDepartures(fetcher, new Date(), "consumer-key");
     controller.abort();
 
     await expect(departures).rejects.toThrow("The operation was aborted");

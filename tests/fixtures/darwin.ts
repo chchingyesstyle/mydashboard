@@ -37,7 +37,7 @@ const service = (overrides: Record<string, unknown>) => ({
   ...overrides
 });
 
-export const huxleyFixture = {
+export const darwinFixture = {
   trainServices: [
     service({
       serviceID: "overground",
@@ -52,7 +52,8 @@ export const huxleyFixture = {
       serviceIdPercentEncoded: "delayed",
       std: "12:15",
       etd: "12:23",
-      platform: null
+      platform: null,
+      delayReason: "A signalling fault"
     }),
     service({
       serviceID: "cancelled",
@@ -60,7 +61,7 @@ export const huxleyFixture = {
       std: "12:20",
       isCancelled: true,
       etd: "Cancelled",
-      cancelReason: "This service has been cancelled because of a shortage of train crew"
+      cancelReason: "A shortage of train crew"
     }),
     service({
       serviceID: "unknown",
@@ -81,7 +82,7 @@ export const huxleyFixture = {
   crs: "WFJ",
   filterLocationName: "London Euston",
   filtercrs: "EUS",
-  filterType: 0,
+  filterType: "to",
   nrccMessages: null,
   platformAvailable: true,
   areServicesAvailable: true

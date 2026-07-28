@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createDashboardService } from "../../src/worker/dashboard";
 import type { CacheStore } from "../../src/worker/provider-cache";
-import { normalizeHuxley } from "../../src/worker/providers/rail";
-import { huxleyFixture } from "../fixtures/huxley";
+import { normalizeDarwin } from "../../src/worker/providers/rail";
+import { darwinFixture } from "../fixtures/darwin";
 import { openMeteoFixture } from "../fixtures/open-meteo";
 
 class MemoryCacheStore implements CacheStore {
@@ -27,9 +27,9 @@ class MemoryCacheStore implements CacheStore {
 function networkFetcher(options: { rail?: Response; weather?: Response } = {}): typeof fetch {
   return (async (input: string | URL | Request) => {
     const url = input.toString();
-    if (url.includes("national-rail-api")) {
+    if (url.includes("api1.raildata.org.uk")) {
       return options.rail?.clone() ??
-        new Response(JSON.stringify(huxleyFixture));
+        new Response(JSON.stringify(darwinFixture));
     }
     if (url.includes("api.open-meteo.com")) {
       return options.weather?.clone() ??
@@ -48,7 +48,8 @@ describe("dashboard service", () => {
     const getDashboard = createDashboardService({
       fetcher: networkFetcher(),
       cache: new MemoryCacheStore(),
-      now: () => NOW
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
     });
 
     const dashboard = await getDashboard();
@@ -88,7 +89,8 @@ describe("dashboard service", () => {
     const getDashboard = createDashboardService({
       fetcher: networkFetcher(),
       cache,
-      now: () => now
+      now: () => now,
+      darwinApiKey: "consumer-key"
     });
 
     const first = await getDashboard();
@@ -100,7 +102,7 @@ describe("dashboard service", () => {
 
   it("returns stale departures and a partial dashboard when rail refresh fails", async () => {
     const cache = new MemoryCacheStore();
-    const cachedServices = normalizeHuxley(huxleyFixture);
+    const cachedServices = normalizeDarwin(darwinFixture);
     cache.seed(
       "rail",
       cachedServices,
@@ -109,7 +111,8 @@ describe("dashboard service", () => {
     const getDashboard = createDashboardService({
       fetcher: networkFetcher({ rail: new Response("unavailable", { status: 503 }) }),
       cache,
-      now: () => NOW
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
     });
 
     const dashboard = await getDashboard();
@@ -129,7 +132,8 @@ describe("dashboard service", () => {
     const getDashboard = createDashboardService({
       fetcher: networkFetcher({ rail: new Response("unavailable", { status: 503 }) }),
       cache: new MemoryCacheStore(),
-      now: () => NOW
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
     });
 
     const dashboard = await getDashboard();
@@ -153,7 +157,8 @@ describe("dashboard service", () => {
         weather: new Response("unavailable", { status: 503 })
       }),
       cache: new MemoryCacheStore(),
-      now: () => NOW
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
     });
 
     const dashboard = await getDashboard();
@@ -188,15 +193,41 @@ describe("dashboard service", () => {
     const getDashboard = createDashboardService({
       fetcher,
       cache: new MemoryCacheStore(),
-      now: () => NOW
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
     });
 
     const dashboard = getDashboard();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(requestedUrls).toHaveLength(2);
-    resolvers[0](new Response(JSON.stringify(huxleyFixture)));
+    resolvers[0](new Response(JSON.stringify(darwinFixture)));
     resolvers[1](new Response(JSON.stringify(openMeteoFixture)));
     await expect(dashboard).resolves.toMatchObject({ status: "live" });
+  });
+
+  it("passes the configured Darwin key only in the upstream header", async () => {
+    let request: Request | undefined;
+    const fetcher = (async (
+      input: string | URL | Request,
+      init?: RequestInit
+    ) => {
+      const candidate = new Request(input, init);
+      if (candidate.url.includes("api1.raildata.org.uk")) {
+        request = candidate;
+        return new Response(JSON.stringify(darwinFixture));
+      }
+      return new Response(JSON.stringify(openMeteoFixture));
+    }) as typeof fetch;
+
+    await createDashboardService({
+      fetcher,
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    })();
+
+    expect(request!.headers.get("x-apikey")).toBe("consumer-key");
+    expect(request!.url).not.toContain("consumer-key");
   });
 });
