@@ -8,14 +8,19 @@ These instructions apply to the entire repository.
 - Show every direct train from Watford Junction (`WFJ`) to London Euston (`EUS`), including London Overground.
 - Show current weather conditions at Watford Junction only. Do not add hourly or daily forecasts unless requested.
 - Keep the public `/api/v1/dashboard` response suitable for both the web frontend and a future Seeed Studio reTerminal E1001 ESP32 client.
-- Treat `docs/superpowers/specs/2026-07-28-watford-euston-dashboard-design.md` as the current product and architecture specification.
+- Treat `docs/superpowers/specs/2026-07-28-watford-euston-dashboard-design.md`
+  as the base product specification and
+  `docs/superpowers/specs/2026-07-28-darwin-pressure-accessibility-design.md`
+  as its current data and accessibility extension.
 
 ## Architecture and Data
 
 - Use a Vite and TypeScript frontend served by a Cloudflare Worker.
 - Keep rail and weather providers behind focused adapters. Provider-specific fields must not leak into the public API contract.
-- Use Huxley 2 Community Edition temporarily for rail data. Replace only the rail adapter when the official Darwin Consumer key becomes available.
-- Use Open-Meteo for current weather conditions.
+- Use the subscribed National Rail Darwin Live Departure Board JSON API for
+  rail data and keep its Consumer key in the `DARWIN_API_KEY` Worker secret.
+- Use Open-Meteo for current weather conditions, including mean sea-level
+  pressure. Do not request forecast series.
 - Preserve the versioned `/api/v1/dashboard` contract unless an explicit requirement calls for a breaking change.
 - Do not build ESP32 firmware unless explicitly requested. Maintain compatibility through compact JSON, stable enums, ISO 8601 timestamps, `ETag`, and CORS support.
 
@@ -23,6 +28,8 @@ These instructions apply to the entire repository.
 
 - Never commit or print credentials from `.bashrc`, Cloudflare, GitHub, Darwin, or any other provider.
 - Keep provider credentials in Cloudflare Worker secrets. Do not expose them to browser code or API responses.
+- Send the Darwin Consumer key only in the upstream `x-apikey` header. The
+  Darwin Consumer secret is not used by this product.
 - Deploy through Cloudflare Workers and verify the production API and page at `dashboard.cchk.uk`.
 - Push intended source changes to `https://github.com/chchingyesstyle/mydashboard`.
 
