@@ -1,4 +1,6 @@
 import type { DashboardPayload } from "../shared/contracts";
+import { createDashboardService } from "./dashboard";
+import type { CacheStore } from "./provider-cache";
 
 interface Assets {
   fetch(request: Request): Promise<Response>;
@@ -13,16 +15,63 @@ interface Env {
   ASSETS: Assets;
 }
 
+const API_PATH = "/api/v1/dashboard";
+const CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, OPTIONS",
+  "access-control-allow-headers": "If-None-Match"
+};
+
+async function etagFor(body: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(body)
+  );
+  const hex = Array.from(
+    new Uint8Array(digest),
+    (byte) => byte.toString(16).padStart(2, "0")
+  ).join("");
+  return `"${hex}"`;
+}
+
 export function createWorker({ getDashboard, assets }: WorkerDependencies) {
   return {
     async fetch(request: Request): Promise<Response> {
       const url = new URL(request.url);
 
-      if (request.method === "GET" && url.pathname === "/api/v1/dashboard") {
-        return new Response(JSON.stringify(await getDashboard()), {
+      if (url.pathname === API_PATH) {
+        if (request.method === "OPTIONS") {
+          return new Response(null, {
+            status: 204,
+            headers: CORS_HEADERS
+          });
+        }
+
+        if (request.method !== "GET") {
+          return new Response(null, {
+            status: 405,
+            headers: {
+              ...CORS_HEADERS,
+              allow: "GET, OPTIONS"
+            }
+          });
+        }
+
+        const body = JSON.stringify(await getDashboard());
+        const etag = await etagFor(body);
+        const headers = {
+          ...CORS_HEADERS,
+          "cache-control": "public, max-age=15, must-revalidate",
+          etag
+        };
+
+        if (request.headers.get("if-none-match") === etag) {
+          return new Response(null, { status: 304, headers });
+        }
+
+        return new Response(body, {
           headers: {
-            "access-control-allow-origin": "*",
-            "cache-control": "public, max-age=15, must-revalidate",
+            ...headers,
             "content-type": "application/json"
           }
         });
@@ -33,12 +82,15 @@ export function createWorker({ getDashboard, assets }: WorkerDependencies) {
   };
 }
 
-const getDashboard = async (): Promise<DashboardPayload> => {
-  throw new Error("Dashboard dependencies are not configured");
-};
-
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
-    return createWorker({ getDashboard, assets: env.ASSETS }).fetch(request);
+    return createWorker({
+      getDashboard: createDashboardService({
+        fetcher: fetch,
+        cache: (caches as CacheStorage & { readonly default: CacheStore }).default,
+        now: () => new Date()
+      }),
+      assets: env.ASSETS
+    }).fetch(request);
   }
 };
