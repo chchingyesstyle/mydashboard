@@ -178,4 +178,52 @@ describe("provider cache", () => {
       stale: false
     });
   });
+
+  it("replaces a cache record with a parseable but non-canonical timestamp", async () => {
+    const cache = new MemoryCacheStore();
+    await cache.put(
+      new Request("https://dashboard-cache.invalid/weather"),
+      new Response(JSON.stringify({
+        value: { temperatureC: 20 },
+        updatedAt: "2026-07-28T12:00:00+00:00"
+      }))
+    );
+    const now = new Date("2026-07-28T12:00:01.000Z");
+    let loads = 0;
+
+    const result = await loadWithFallback({
+      cache,
+      now,
+      load: async () => {
+        loads += 1;
+        return { temperatureC: 21.4 };
+      },
+      ...weatherOptions
+    });
+
+    expect(result).toEqual({
+      value: { temperatureC: 21.4 },
+      updatedAt: now.toISOString(),
+      stale: false
+    });
+    expect(loads).toBe(1);
+  });
+
+  it("does not return a future-dated cache record when refresh fails", async () => {
+    const cache = new MemoryCacheStore();
+    await cache.put(
+      new Request("https://dashboard-cache.invalid/weather"),
+      new Response(JSON.stringify({
+        value: { temperatureC: 20 },
+        updatedAt: "2026-07-28T12:01:00.000Z"
+      }))
+    );
+
+    await expect(loadWithFallback({
+      cache,
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      load: async () => Promise.reject(new Error("weather unavailable")),
+      ...weatherOptions
+    })).rejects.toThrow("weather unavailable");
+  });
 });

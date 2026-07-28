@@ -18,20 +18,30 @@ function cacheRequest(key: string): Request {
   return new Request(`https://dashboard-cache.invalid/${encodeURIComponent(key)}`);
 }
 
-function isCacheRecord<T>(value: unknown): value is CacheRecord<T> {
-  return typeof value === "object" && value !== null &&
-    Object.hasOwn(value, "value") &&
-    typeof (value as CacheRecord<T>).updatedAt === "string" &&
-    !Number.isNaN(Date.parse((value as CacheRecord<T>).updatedAt));
+function isCacheRecord<T>(value: unknown, now: Date): value is CacheRecord<T> {
+  if (typeof value !== "object" || value === null || !Object.hasOwn(value, "value")) {
+    return false;
+  }
+
+  const updatedAt = (value as CacheRecord<T>).updatedAt;
+  if (typeof updatedAt !== "string") return false;
+
+  const timestamp = Date.parse(updatedAt);
+  return !Number.isNaN(timestamp) && new Date(timestamp).toISOString() === updatedAt &&
+    timestamp <= now.getTime();
 }
 
-async function readRecord<T>(cache: CacheStore, request: Request): Promise<CacheRecord<T> | undefined> {
+async function readRecord<T>(
+  cache: CacheStore,
+  request: Request,
+  now: Date
+): Promise<CacheRecord<T> | undefined> {
   const response = await cache.match(request);
   if (!response) return undefined;
 
   try {
     const record: unknown = await response.json();
-    return isCacheRecord<T>(record) ? record : undefined;
+    return isCacheRecord<T>(record, now) ? record : undefined;
   } catch {
     return undefined;
   }
@@ -46,7 +56,7 @@ export async function loadWithFallback<T>(options: {
   load: () => Promise<T>;
 }): Promise<CachedResult<T>> {
   const request = cacheRequest(options.key);
-  const record = await readRecord<T>(options.cache, request);
+  const record = await readRecord<T>(options.cache, request, options.now);
   const age = record ? options.now.getTime() - Date.parse(record.updatedAt) : undefined;
 
   if (record && age !== undefined && age < options.freshForMs) {
