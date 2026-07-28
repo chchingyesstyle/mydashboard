@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getByRole, queryByRole, within } from "@testing-library/dom";
 import type { DashboardPayload } from "../../src/shared/contracts";
-import { renderDashboard } from "../../src/app/render";
+import { renderDashboard, updateStaleAges } from "../../src/app/render";
 import { startDashboardApp } from "../../src/app/main";
 
 const livePayload: DashboardPayload = {
@@ -163,10 +163,18 @@ describe("dashboard rendering", () => {
       }
     });
 
-    expect(within(getByRole(root, "region", { name: "Departures" }))
-      .getByText("Stale data · 5 minutes old")).toBeTruthy();
-    expect(within(getByRole(root, "region", { name: "Current weather" }))
-      .getByText("Stale data · 10 minutes old")).toBeTruthy();
+    const departures = getByRole(root, "region", { name: "Departures" });
+    const weather = getByRole(root, "region", { name: "Current weather" });
+    const announcement = within(departures).getByRole("status");
+    const age = departures.querySelector<HTMLElement>(
+      "[data-dashboard-stale-age]"
+    )!;
+
+    expect(announcement.textContent).toBe("Stale data");
+    expect(announcement.contains(age)).toBe(false);
+    expect(age.getAttribute("aria-live")).toBe("off");
+    expect(departures.textContent).toContain("Stale data · 5 minutes old");
+    expect(weather.textContent).toContain("Stale data · 10 minutes old");
   });
 
   it("uses the client clock to age two stale panels with a stable snapshot timestamp", () => {
@@ -188,10 +196,38 @@ describe("dashboard rendering", () => {
       }
     }, new Date("2026-07-28T12:07:00.000Z"));
 
-    expect(within(getByRole(root, "region", { name: "Departures" }))
-      .getByText("Stale data · 7 minutes old")).toBeTruthy();
-    expect(within(getByRole(root, "region", { name: "Current weather" }))
-      .getByText("Stale data · 17 minutes old")).toBeTruthy();
+    expect(getByRole(root, "region", { name: "Departures" }).textContent)
+      .toContain("Stale data · 7 minutes old");
+    expect(getByRole(root, "region", { name: "Current weather" }).textContent)
+      .toContain("Stale data · 17 minutes old");
+  });
+
+  it("does not rewrite a stale age until its formatted value changes", () => {
+    const stalePayload: DashboardPayload = {
+      ...livePayload,
+      status: "partial",
+      departures: {
+        ...livePayload.departures,
+        status: "stale",
+        stale: true,
+        updatedAt: "2026-07-28T12:00:00.000Z"
+      }
+    };
+    const root = render(
+      stalePayload,
+      new Date("2026-07-28T12:07:00.000Z")
+    );
+    const age = root.querySelector<HTMLElement>(
+      "[data-dashboard-stale-age]"
+    )!;
+    const originalTextNode = age.firstChild;
+
+    updateStaleAges(root, new Date("2026-07-28T12:07:01.000Z"));
+    expect(age.firstChild).toBe(originalTextNode);
+
+    updateStaleAges(root, new Date("2026-07-28T12:08:00.000Z"));
+    expect(age.firstChild).not.toBe(originalTextNode);
+    expect(age.textContent).toBe(" · 8 minutes old");
   });
 
   it("renders static icons alongside non-live status text", () => {
@@ -393,12 +429,12 @@ describe("dashboard runtime", () => {
     });
     refresh.focus();
 
-    expect(within(departures).getByText("Stale data · 5 minutes old")).toBeTruthy();
+    expect(departures.textContent).toContain("Stale data · 5 minutes old");
 
     await vi.advanceTimersByTimeAsync(30_000);
 
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(within(departures).getByText("Stale data · 6 minutes old")).toBeTruthy();
+    expect(departures.textContent).toContain("Stale data · 6 minutes old");
     expect(getByRole(root, "button", { name: "Refresh dashboard" })).toBe(refresh);
     expect(document.activeElement).toBe(refresh);
   });
