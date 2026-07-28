@@ -12,6 +12,7 @@ export type WeatherValue = {
     | "windDirectionDegrees"]: NonNullable<WeatherPanel[Key]>;
 } & {
   pressureMslHpa: number | null;
+  rainChanceNext6HoursPercent: number | null;
 };
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
@@ -44,6 +45,29 @@ function optionalNumberValue(
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : malformedResponse();
+}
+
+function rainChanceNext6Hours(payload: Record<string, unknown>): number | null {
+  const hourly = payload.hourly;
+  if (typeof hourly !== "object" || hourly === null) return null;
+
+  const probabilities =
+    (hourly as Record<string, unknown>).precipitation_probability;
+  if (
+    !Array.isArray(probabilities) ||
+    probabilities.length !== 6 ||
+    !probabilities.every(
+      (value) =>
+        typeof value === "number" &&
+        Number.isFinite(value) &&
+        value >= 0 &&
+        value <= 100
+    )
+  ) {
+    return null;
+  }
+
+  return Math.max(...probabilities);
 }
 
 function conditionFor(weatherCode: number): string {
@@ -99,7 +123,8 @@ function conditionFor(weatherCode: number): string {
 export function normalizeWeather(payload: unknown): WeatherValue {
   if (typeof payload !== "object" || payload === null) malformedResponse();
 
-  const current = (payload as Record<string, unknown>).current;
+  const response = payload as Record<string, unknown>;
+  const current = response.current;
   if (typeof current !== "object" || current === null) malformedResponse();
 
   const values = current as Record<string, unknown>;
@@ -110,6 +135,7 @@ export function normalizeWeather(payload: unknown): WeatherValue {
     apparentTemperatureC: numberValue(values, "apparent_temperature"),
     relativeHumidityPercent: numberValue(values, "relative_humidity_2m"),
     precipitationMm: numberValue(values, "precipitation"),
+    rainChanceNext6HoursPercent: rainChanceNext6Hours(response),
     weatherCode,
     condition: conditionFor(weatherCode),
     windSpeedKph: numberValue(values, "wind_speed_10m"),
@@ -130,6 +156,8 @@ export async function fetchWeather(
   url.searchParams.set("temperature_unit", "celsius");
   url.searchParams.set("wind_speed_unit", "kmh");
   url.searchParams.set("current", CURRENT_FIELDS);
+  url.searchParams.set("hourly", "precipitation_probability");
+  url.searchParams.set("forecast_hours", "6");
 
   const response = await fetcher(url, { signal: AbortSignal.timeout(7000) });
 

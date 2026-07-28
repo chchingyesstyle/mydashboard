@@ -9,6 +9,7 @@ describe("Open-Meteo weather provider", () => {
       apparentTemperatureC: 20.8,
       relativeHumidityPercent: 63,
       precipitationMm: 0,
+      rainChanceNext6HoursPercent: 60,
       weatherCode: 2,
       condition: "Partly cloudy",
       windSpeedKph: 12.1,
@@ -63,7 +64,28 @@ describe("Open-Meteo weather provider", () => {
     });
   });
 
-  it("requests only current weather for Watford Junction", async () => {
+  it.each([
+    ["absent", undefined],
+    ["incomplete", [10, 20, 35, 60, 45]],
+    ["non-numeric", [10, 20, 35, "60", 45, 30]],
+    ["non-finite", [10, 20, 35, Number.NaN, 45, 30]],
+    ["below range", [10, 20, -1, 60, 45, 30]],
+    ["above range", [10, 20, 35, 101, 45, 30]]
+  ])("keeps current weather when the rain series is %s", (_case, series) => {
+    const payload = {
+      ...openMeteoFixture,
+      hourly: series === undefined
+        ? undefined
+        : { ...openMeteoFixture.hourly, precipitation_probability: series }
+    };
+
+    expect(normalizeWeather(payload)).toMatchObject({
+      temperatureC: 21.4,
+      rainChanceNext6HoursPercent: null
+    });
+  });
+
+  it("requests current weather and the next six rain probabilities for Watford Junction", async () => {
     let requestedUrl = "";
     const fetcher = (async (input: string | URL | Request) => {
       requestedUrl = input.toString();
@@ -82,7 +104,8 @@ describe("Open-Meteo weather provider", () => {
     expect(url.searchParams.get("current")).toBe(
       "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl"
     );
-    expect(requestedUrl).not.toContain("hourly=");
+    expect(url.searchParams.get("hourly")).toBe("precipitation_probability");
+    expect(url.searchParams.get("forecast_hours")).toBe("6");
     expect(requestedUrl).not.toContain("daily=");
   });
 

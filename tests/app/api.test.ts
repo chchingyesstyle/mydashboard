@@ -25,6 +25,7 @@ const payload: DashboardPayload = {
     apparentTemperatureC: 20.8,
     relativeHumidityPercent: 63,
     precipitationMm: 0,
+    rainChanceNext6HoursPercent: 60,
     weatherCode: 2,
     condition: "Partly cloudy",
     windSpeedKph: 12.1,

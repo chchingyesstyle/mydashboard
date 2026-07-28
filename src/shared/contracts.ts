@@ -31,6 +31,7 @@ export interface WeatherPanel {
   apparentTemperatureC: number | null;
   relativeHumidityPercent: number | null;
   precipitationMm: number | null;
+  rainChanceNext6HoursPercent: number | null;
   weatherCode: number | null;
   condition: string | null;
   windSpeedKph: number | null;

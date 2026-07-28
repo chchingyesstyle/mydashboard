@@ -29,5 +29,20 @@ export const openMeteoFixture = {
     wind_speed_10m: 12.1,
     wind_direction_10m: 240,
     pressure_msl: 1016.4
+  },
+  hourly_units: {
+    time: "iso8601",
+    precipitation_probability: "%"
+  },
+  hourly: {
+    time: [
+      "2026-07-28T13:00",
+      "2026-07-28T14:00",
+      "2026-07-28T15:00",
+      "2026-07-28T16:00",
+      "2026-07-28T17:00",
+      "2026-07-28T18:00"
+    ],
+    precipitation_probability: [10, 20, 35, 60, 45, 30]
   }
 };

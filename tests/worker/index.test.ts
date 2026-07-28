@@ -25,6 +25,7 @@ const payload: DashboardPayload = {
     apparentTemperatureC: null,
     relativeHumidityPercent: null,
     precipitationMm: null,
+    rainChanceNext6HoursPercent: null,
     weatherCode: null,
     condition: null,
     windSpeedKph: null,
