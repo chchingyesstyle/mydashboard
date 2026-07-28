@@ -175,6 +175,11 @@ expect(() => normalizeDarwin({
   generatedAt: "28 July 2026 12:00"
 })).toThrow("Darwin departures response was malformed");
 
+expect(normalizeDarwin({
+  ...darwinFixture,
+  generatedAt: "2026-07-28T17:07:38.8418107+01:00"
+})).toHaveLength(5);
+
 await expect(fetchDepartures(fetcher, new Date(), ""))
   .rejects.toThrow("Darwin API key is not configured");
 expect(fetcher).not.toHaveBeenCalled();
@@ -204,13 +209,14 @@ const DARWIN_DEPARTURES_URL =
 ```
 
 Keep the existing status and ISO-time mapping, but rename provider-specific
-types and errors to Darwin. Validate `generatedAt` canonically:
+types and errors to Darwin. Require a parseable ISO timestamp with an explicit
+timezone while accepting Darwin's offset and extended precision:
 
 ```ts
-function isCanonicalTimestamp(value: string): boolean {
-  const timestamp = Date.parse(value);
-  return !Number.isNaN(timestamp) &&
-    new Date(timestamp).toISOString() === value;
+function isIsoTimestamp(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+    .test(value) &&
+    !Number.isNaN(Date.parse(value));
 }
 ```
 

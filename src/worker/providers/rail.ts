@@ -62,10 +62,10 @@ function departureFrom(service: DarwinService, generatedAt: string): Departure {
   };
 }
 
-function isCanonicalTimestamp(value: string): boolean {
-  const timestamp = Date.parse(value);
-  return !Number.isNaN(timestamp) &&
-    new Date(timestamp).toISOString() === value;
+function isIsoTimestamp(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+    .test(value) &&
+    !Number.isNaN(Date.parse(value));
 }
 
 export function normalizeDarwin(response: unknown): Departure[] {
@@ -75,7 +75,7 @@ export function normalizeDarwin(response: unknown): Departure[] {
   const generatedAt = stringValue(board.generatedAt);
   if (
     !generatedAt ||
-    !isCanonicalTimestamp(generatedAt) ||
+    !isIsoTimestamp(generatedAt) ||
     !Array.isArray(board.trainServices)
   ) {
     malformedResponse();

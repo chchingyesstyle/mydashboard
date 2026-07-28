@@ -78,7 +78,8 @@ upstream refresh interval and 30-minute stale fallback.
 The Darwin station-board response is accepted only when:
 
 - the body is an object;
-- `generatedAt` is a canonical, parseable ISO timestamp;
+- `generatedAt` is a parseable ISO timestamp with an explicit timezone,
+  including Darwin's offset and extended fractional-second format;
 - `trainServices` is an array; and
 - each retained direct service supplies a valid scheduled time, stable service
   ID, operator name, and operator code.
@@ -188,7 +189,7 @@ Rail tests prove:
 - no credential appears in the URL;
 - direct `EUS` filtering retains London Overground and every other operator;
 - on-time, delayed, cancelled, unknown, missing-platform, and midnight cases;
-- canonical `generatedAt` validation;
+- live-format `generatedAt` acceptance and non-ISO timestamp rejection;
 - `401`, other non-success responses, malformed JSON, and malformed services
   become provider failures; and
 - missing credentials do not issue an upstream request.

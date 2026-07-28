@@ -34,11 +34,18 @@ describe("Darwin rail provider", () => {
     expect(service.expectedDeparture).toBe("2026-07-29T00:20:00+01:00");
   });
 
-  it("rejects non-canonical generated timestamps", () => {
+  it("rejects non-ISO generated timestamps", () => {
     expect(() => normalizeDarwin({
       ...darwinFixture,
       generatedAt: "28 July 2026 12:00"
     })).toThrow("Darwin departures response was malformed");
+  });
+
+  it("accepts Darwin timestamps with an explicit offset and extended precision", () => {
+    expect(normalizeDarwin({
+      ...darwinFixture,
+      generatedAt: "2026-07-28T17:07:38.8418107+01:00"
+    })).toHaveLength(5);
   });
 
   it("requests every direct Watford to Euston departure through RDM", async () => {
