@@ -126,7 +126,8 @@ describe("dashboard rendering", () => {
     expect(within(weather).getByText("63%")).toBeTruthy();
     expect(within(weather).getByText("0 mm")).toBeTruthy();
     expect(within(weather).getByText("12.1 km/h at 240°")).toBeTruthy();
-    expect(within(weather).getByText("1016 hPa")).toBeTruthy();
+    expect(within(weather).getByText("1016.40 hPa")).toBeTruthy();
+    expect(within(weather).getByText("1016.40 hectopascals")).toBeTruthy();
     expect(queryByRole(root, "heading", { name: /forecast/i })).toBeNull();
     expect(queryByRole(root, "list", { name: /forecast/i })).toBeNull();
   });

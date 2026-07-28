@@ -322,8 +322,8 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
       ? weatherValue("Pressure", "Unavailable", "Pressure unavailable")
       : weatherValue(
           "Pressure",
-          `${Math.round(panel.pressureMslHpa)} hPa`,
-          `${Math.round(panel.pressureMslHpa)} hectopascals`
+          `${panel.pressureMslHpa.toFixed(2)} hPa`,
+          `${panel.pressureMslHpa.toFixed(2)} hectopascals`
         )
   ];
   for (const [term, value] of values) {
