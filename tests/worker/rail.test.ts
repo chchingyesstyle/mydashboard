@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fetchDepartures, normalizeHuxley } from "../../src/worker/providers/rail";
 import { huxleyFixture } from "../fixtures/huxley";
 
@@ -7,10 +7,10 @@ describe("Huxley rail provider", () => {
     const services = normalizeHuxley(huxleyFixture);
 
     expect(services.map(({ operatorCode }) => operatorCode)).toEqual([
-      "LO", "LM", "LM", "LM"
+      "LO", "LM", "LM", "LM", "LM"
     ]);
     expect(services.map(({ status }) => status)).toEqual([
-      "on_time", "on_time", "delayed", "cancelled"
+      "on_time", "on_time", "delayed", "cancelled", "unknown"
     ]);
     expect(services[3].reason).toBe(
       "This service has been cancelled because of a shortage of train crew"
@@ -46,5 +46,24 @@ describe("Huxley rail provider", () => {
     await expect(fetchDepartures(fetcher, new Date())).rejects.toThrow(
       "Huxley departures response was malformed"
     );
+  });
+
+  it("aborts the Huxley request after seven seconds", async () => {
+    const controller = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    let requestWasAborted = false;
+    const fetcher = ((_: string | URL | Request, init?: RequestInit) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener("abort", () => {
+        requestWasAborted = true;
+        reject(new DOMException("The operation was aborted", "AbortError"));
+      });
+    })) as typeof fetch;
+
+    const departures = fetchDepartures(fetcher, new Date());
+    controller.abort();
+
+    await expect(departures).rejects.toThrow("The operation was aborted");
+    expect(requestWasAborted).toBe(true);
+    expect(timeout).toHaveBeenCalledWith(7000);
   });
 });

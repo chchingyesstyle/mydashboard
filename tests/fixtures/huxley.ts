@@ -63,6 +63,12 @@ export const huxleyFixture = {
       cancelReason: "This service has been cancelled because of a shortage of train crew"
     }),
     service({
+      serviceID: "unknown",
+      serviceIdPercentEncoded: "unknown",
+      std: "12:25",
+      etd: "Delayed"
+    }),
+    service({
       serviceID: "other-destination",
       serviceIdPercentEncoded: "other-destination",
       destination: [destination("WAT", "Watford")]
