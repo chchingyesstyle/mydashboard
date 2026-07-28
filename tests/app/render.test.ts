@@ -1,0 +1,354 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getByRole, queryByRole, within } from "@testing-library/dom";
+import type { DashboardPayload } from "../../src/shared/contracts";
+import { renderDashboard } from "../../src/app/render";
+import { startDashboardApp } from "../../src/app/main";
+
+const livePayload: DashboardPayload = {
+  version: 1,
+  generatedAt: "2026-07-28T12:00:00.000Z",
+  status: "live",
+  route: {
+    origin: { name: "Watford Junction", crs: "WFJ" },
+    destination: { name: "London Euston", crs: "EUS" }
+  },
+  departures: {
+    status: "live",
+    updatedAt: "2026-07-28T12:00:00.000Z",
+    stale: false,
+    services: [
+      {
+        id: "overground",
+        scheduledDeparture: "2026-07-28T12:12:00+01:00",
+        expectedDeparture: "2026-07-28T12:12:00+01:00",
+        expectedDisplay: "On time",
+        platform: "3",
+        operator: "London Overground",
+        operatorCode: "LO",
+        status: "on_time",
+        isCancelled: false,
+        reason: null
+      },
+      {
+        id: "lnr",
+        scheduledDeparture: "2026-07-28T12:20:00+01:00",
+        expectedDeparture: "2026-07-28T12:28:00+01:00",
+        expectedDisplay: "Expected 12:28",
+        platform: null,
+        operator: "LNR",
+        operatorCode: "LM",
+        status: "delayed",
+        isCancelled: false,
+        reason: "A signalling fault"
+      },
+      {
+        id: "cancelled",
+        scheduledDeparture: "2026-07-28T12:30:00+01:00",
+        expectedDeparture: null,
+        expectedDisplay: "No report",
+        platform: "6",
+        operator: "LNR",
+        operatorCode: "LM",
+        status: "cancelled",
+        isCancelled: true,
+        reason: "A train fault"
+      }
+    ],
+    error: null
+  },
+  weather: {
+    status: "live",
+    updatedAt: "2026-07-28T12:00:00.000Z",
+    stale: false,
+    temperatureC: 21.4,
+    apparentTemperatureC: 20.8,
+    relativeHumidityPercent: 63,
+    precipitationMm: 0,
+    weatherCode: 2,
+    condition: "Partly cloudy",
+    windSpeedKph: 12.1,
+    windDirectionDegrees: 240,
+    error: null
+  }
+};
+
+function render(payload: DashboardPayload = livePayload): HTMLElement {
+  const root = document.createElement("main");
+  document.body.appendChild(root);
+  renderDashboard(root, payload);
+  return root;
+}
+
+afterEach(() => {
+  window.dispatchEvent(new Event("pagehide"));
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  document.body.replaceChildren();
+});
+
+describe("dashboard rendering", () => {
+  it("renders the route and every direct service with accessible departure semantics", () => {
+    const root = render();
+    const departures = getByRole(root, "region", { name: "Departures" });
+
+    expect(getByRole(root, "heading", {
+      level: 1,
+      name: "Watford Junction to London Euston"
+    })).toBeTruthy();
+    expect(within(departures).getByText("London Overground")).toBeTruthy();
+    expect(within(departures).getAllByText("LNR")).toHaveLength(2);
+    expect(within(departures).getByText("12:12")).toBeTruthy();
+    expect(within(departures).getByText("On time")).toBeTruthy();
+    expect(within(departures).getByText("Platform 3")).toBeTruthy();
+    expect(within(departures).getByText("Expected 12:28")).toBeTruthy();
+    expect(within(departures).getByText("Platform TBC")).toBeTruthy();
+  });
+
+  it("keeps a cancelled service and its disruption reason visible", () => {
+    const departures = getByRole(render(), "region", { name: "Departures" });
+
+    expect(within(departures).getByText("12:30")).toBeTruthy();
+    expect(within(departures).getByText("Cancelled")).toBeTruthy();
+    expect(within(departures).getByText("A train fault")).toBeTruthy();
+  });
+
+  it("renders only current weather measurements", () => {
+    const root = render();
+    const weather = getByRole(root, "region", { name: "Current weather" });
+
+    expect(within(weather).getByText("21.4°C")).toBeTruthy();
+    expect(within(weather).getByText("Partly cloudy")).toBeTruthy();
+    expect(within(weather).getByText("20.8°C")).toBeTruthy();
+    expect(within(weather).getByText("63%")).toBeTruthy();
+    expect(within(weather).getByText("0 mm")).toBeTruthy();
+    expect(within(weather).getByText("12.1 km/h at 240°")).toBeTruthy();
+    expect(queryByRole(root, "heading", { name: /forecast/i })).toBeNull();
+    expect(queryByRole(root, "list", { name: /forecast/i })).toBeNull();
+  });
+
+  it("labels stale panels and exposes their data age", () => {
+    const root = render({
+      ...livePayload,
+      status: "partial",
+      departures: {
+        ...livePayload.departures,
+        status: "stale",
+        stale: true,
+        updatedAt: "2026-07-28T11:55:00.000Z"
+      },
+      weather: {
+        ...livePayload.weather,
+        status: "stale",
+        stale: true,
+        updatedAt: "2026-07-28T11:50:00.000Z"
+      }
+    });
+
+    expect(within(getByRole(root, "region", { name: "Departures" }))
+      .getByText("Stale data · 5 minutes old")).toBeTruthy();
+    expect(within(getByRole(root, "region", { name: "Current weather" }))
+      .getByText("Stale data · 10 minutes old")).toBeTruthy();
+  });
+
+  it("states when there are no direct departures", () => {
+    const root = render({
+      ...livePayload,
+      departures: {
+        ...livePayload.departures,
+        services: []
+      }
+    });
+
+    expect(within(getByRole(root, "region", { name: "Departures" }))
+      .getByText("No direct departures are currently available.")).toBeTruthy();
+  });
+
+  it("shows a departures error while current weather remains visible", () => {
+    const root = render({
+      ...livePayload,
+      status: "partial",
+      departures: {
+        status: "unavailable",
+        updatedAt: null,
+        stale: false,
+        services: [],
+        error: "Live departures are temporarily unavailable."
+      }
+    });
+
+    expect(within(getByRole(root, "region", { name: "Departures" }))
+      .getByRole("alert").textContent).toBe(
+      "Live departures are temporarily unavailable."
+    );
+    expect(within(getByRole(root, "region", { name: "Current weather" }))
+      .getByText("21.4°C")).toBeTruthy();
+  });
+
+  it("shows a weather error while departures remain visible", () => {
+    const root = render({
+      ...livePayload,
+      status: "partial",
+      weather: {
+        status: "unavailable",
+        updatedAt: null,
+        stale: false,
+        temperatureC: null,
+        apparentTemperatureC: null,
+        relativeHumidityPercent: null,
+        precipitationMm: null,
+        weatherCode: null,
+        condition: null,
+        windSpeedKph: null,
+        windDirectionDegrees: null,
+        error: "Current weather is temporarily unavailable."
+      }
+    });
+
+    expect(within(getByRole(root, "region", { name: "Current weather" }))
+      .getByRole("alert").textContent).toBe(
+      "Current weather is temporarily unavailable."
+    );
+    expect(within(getByRole(root, "region", { name: "Departures" }))
+      .getByText("London Overground")).toBeTruthy();
+  });
+
+  it("treats provider text as text instead of markup", () => {
+    const root = render({
+      ...livePayload,
+      departures: {
+        ...livePayload.departures,
+        services: [{
+          ...livePayload.departures.services[0],
+          operator: "<img src=x onerror=alert(1)>"
+        }]
+      }
+    });
+
+    expect(within(getByRole(root, "region", { name: "Departures" }))
+      .getByText("<img src=x onerror=alert(1)>")).toBeTruthy();
+    expect(root.querySelector("img")).toBeNull();
+  });
+});
+
+async function settlePromises(): Promise<void> {
+  for (let index = 0; index < 5; index += 1) {
+    await Promise.resolve();
+  }
+}
+
+function dashboardResponse(): Response {
+  return new Response(JSON.stringify(livePayload), {
+    headers: { etag: "\"dashboard-v1\"" }
+  });
+}
+
+describe("dashboard runtime", () => {
+  it("renders loading immediately, then loads and refreshes every 30 seconds", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () =>
+      dashboardResponse()
+    );
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+
+    startDashboardApp(root, fetcher);
+
+    expect(getByRole(root, "status").textContent).toBe(
+      "Loading live departures and current weather…"
+    );
+    await settlePromises();
+    expect(getByRole(root, "heading", {
+      name: "Watford Junction to London Euston"
+    })).toBeTruthy();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("updates the London clock every second without refetching", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-28T13:05:05.000Z"));
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(dashboardResponse());
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    expect(root.querySelector<HTMLElement>("[data-dashboard-clock]")?.textContent)
+      .toBe("14:05:06");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("temporarily disables manual refresh and preserves data after a connection failure", async () => {
+    vi.useFakeTimers();
+    let rejectRefresh: ((reason: Error) => void) | undefined;
+    const failedRefresh = new Promise<Response>((_resolve, reject) => {
+      rejectRefresh = reject;
+    });
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse())
+      .mockReturnValueOnce(failedRefresh);
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+    const refresh = getByRole<HTMLButtonElement>(root, "button", {
+      name: "Refresh dashboard"
+    });
+
+    refresh.click();
+
+    expect(refresh.disabled).toBe(true);
+    rejectRefresh?.(new Error("offline"));
+    await settlePromises();
+    expect(refresh.disabled).toBe(false);
+    expect(getByRole(root, "heading", {
+      name: "Watford Junction to London Euston"
+    })).toBeTruthy();
+    expect(within(root).getByText(
+      "Connection lost. Showing the last updated data."
+    )).toBeTruthy();
+  });
+
+  it("enters and exits fullscreen and stops timers on pagehide", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(dashboardResponse());
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    let fullscreenElement: Element | null = null;
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get: () => fullscreenElement
+    });
+    const requestFullscreen = vi.fn(async () => {
+      fullscreenElement = document.documentElement;
+    });
+    const exitFullscreen = vi.fn(async () => {
+      fullscreenElement = null;
+    });
+    Object.defineProperty(document.documentElement, "requestFullscreen", {
+      configurable: true,
+      value: requestFullscreen
+    });
+    Object.defineProperty(document, "exitFullscreen", {
+      configurable: true,
+      value: exitFullscreen
+    });
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+
+    getByRole(root, "button", { name: "Enter fullscreen" }).click();
+    await settlePromises();
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+    getByRole(root, "button", { name: "Exit fullscreen" }).click();
+    await settlePromises();
+    expect(exitFullscreen).toHaveBeenCalledOnce();
+
+    window.dispatchEvent(new Event("pagehide"));
+    await vi.advanceTimersByTimeAsync(31_000);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+});
