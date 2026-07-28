@@ -62,6 +62,8 @@ function weatherPanel(
     updatedAt: result.value.updatedAt,
     stale: result.value.stale,
     ...result.value.value,
+    rainChanceNext6HoursPercent:
+      result.value.value.rainChanceNext6HoursPercent ?? null,
     error: null
   };
 }

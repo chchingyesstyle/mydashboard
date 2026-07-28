@@ -164,6 +164,19 @@ describe("dashboard rendering", () => {
     expect(within(weather).getByText("21.4°C")).toBeTruthy();
   });
 
+  it("treats a missing rain chance from an older payload as unavailable", () => {
+    const weather = getByRole(render({
+      ...livePayload,
+      weather: {
+        ...livePayload.weather,
+        rainChanceNext6HoursPercent: undefined
+      } as unknown as DashboardPayload["weather"]
+    }), "region", { name: "Current weather" });
+
+    expect(within(weather).getByText("Rain chance unavailable")).toBeTruthy();
+    expect(within(weather).queryByText("undefined%")).toBeNull();
+  });
+
   it("labels stale panels and exposes their data age", () => {
     const root = render({
       ...livePayload,

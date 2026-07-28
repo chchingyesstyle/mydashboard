@@ -313,7 +313,7 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
       `${panel.precipitationMm} mm`,
       `${panel.precipitationMm} millimetres`
     ),
-    panel.rainChanceNext6HoursPercent === null
+    panel.rainChanceNext6HoursPercent == null
       ? weatherValue(
           "Rain chance, next 6 hours",
           "Unavailable",

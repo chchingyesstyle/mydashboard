@@ -102,6 +102,35 @@ describe("dashboard service", () => {
     expect(second).toEqual(first);
   });
 
+  it("normalizes a cached weather value created before rain chance was added", async () => {
+    const cache = new MemoryCacheStore();
+    cache.seed("weather", {
+      temperatureC: 21.4,
+      apparentTemperatureC: 20.8,
+      relativeHumidityPercent: 63,
+      precipitationMm: 0,
+      weatherCode: 2,
+      condition: "Partly cloudy",
+      windSpeedKph: 12.1,
+      windDirectionDegrees: 240,
+      pressureMslHpa: 1016.4
+    }, NOW.toISOString());
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache,
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard();
+
+    expect(dashboard.weather).toMatchObject({
+      status: "live",
+      temperatureC: 21.4,
+      rainChanceNext6HoursPercent: null
+    });
+  });
+
   it("returns stale departures and a partial dashboard when rail refresh fails", async () => {
     const cache = new MemoryCacheStore();
     const cachedServices = normalizeDarwin(darwinFixture);
