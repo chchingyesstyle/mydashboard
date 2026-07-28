@@ -1,6 +1,7 @@
 import { createDashboardClient } from "./api";
 import { renderDashboard } from "./render";
 import type { DashboardPayload } from "../shared/contracts";
+import "./styles.css";
 
 const REFRESH_INTERVAL_MS = 30_000;
 const CLOCK_INTERVAL_MS = 1_000;
