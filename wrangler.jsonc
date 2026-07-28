@@ -4,6 +4,9 @@
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-07-28",
   "workers_dev": false,
+  "cache": {
+    "enabled": false
+  },
   "routes": [
     {
       "pattern": "dashboard.cchk.uk",
