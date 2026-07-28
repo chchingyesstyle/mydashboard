@@ -18,6 +18,22 @@ describe("Huxley rail provider", () => {
     expect(services.some(({ platform }) => platform === null)).toBe(true);
   });
 
+  it("resolves both times for a delayed pre-midnight service viewed after midnight", () => {
+    const [service] = normalizeHuxley({
+      ...huxleyFixture,
+      generatedAt: "2026-07-28T23:10:00.000Z",
+      trainServices: [{
+        ...huxleyFixture.trainServices[0],
+        serviceID: "late-service",
+        std: "23:55",
+        etd: "00:20"
+      }]
+    });
+
+    expect(service.scheduledDeparture).toBe("2026-07-28T23:55:00+01:00");
+    expect(service.expectedDeparture).toBe("2026-07-29T00:20:00+01:00");
+  });
+
   it("requests the configured Watford to Euston endpoint", async () => {
     let requestedUrl = "";
     const fetcher = (async (input: string | URL | Request) => {

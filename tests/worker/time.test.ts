@@ -16,4 +16,9 @@ describe("resolveLondonDeparture", () => {
     expect(resolveLondonDeparture("00:10", "2026-07-28T22:55:00.000Z"))
       .toBe("2026-07-29T00:10:00+01:00");
   });
+
+  it("keeps a delayed pre-midnight service on the previous London day", () => {
+    expect(resolveLondonDeparture("23:55", "2026-07-28T23:10:00.000Z"))
+      .toBe("2026-07-28T23:55:00+01:00");
+  });
 });

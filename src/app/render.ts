@@ -139,11 +139,13 @@ function panelStatus(
   const status = element("p", {
     className: "panel-status panel-status-stale"
   });
-  appendStatusText(
-    status,
-    "stale",
-    `Stale data · ${formatDataAge(panel.updatedAt, now)}`
-  );
+  status.appendChild(statusIcon("stale"));
+  const age = element("span", {
+    text: `Stale data · ${formatDataAge(panel.updatedAt, now)}`
+  });
+  age.dataset.dashboardStaleAge = "";
+  age.dataset.updatedAt = panel.updatedAt;
+  status.appendChild(age);
   status.setAttribute("role", "status");
   return status;
 }
@@ -368,6 +370,16 @@ function renderHeader(payload: DashboardPayload): HTMLElement {
   header.appendChild(metadata);
   header.appendChild(controls);
   return header;
+}
+
+export function updateStaleAges(root: HTMLElement, now = new Date()): void {
+  const ages = root.querySelectorAll<HTMLElement>("[data-dashboard-stale-age]");
+  for (const age of ages) {
+    const updatedAt = age.dataset.updatedAt;
+    if (updatedAt !== undefined) {
+      age.textContent = `Stale data · ${formatDataAge(updatedAt, now)}`;
+    }
+  }
 }
 
 export function renderDashboard(

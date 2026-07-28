@@ -30,20 +30,35 @@ function offsetFor(year: string, month: string, day: string, time: string) {
   return offset === "GMT" ? "+00:00" : offset?.replace("GMT", "") ?? "+00:00";
 }
 
+function serviceTimestamp(localDate: Date, time: string): string {
+  const date = localDate.toISOString().slice(0, 10);
+  const [year, month, day] = date.split("-");
+  return `${date}T${time}:00${offsetFor(year, month, day, time)}`;
+}
+
 export function resolveLondonDeparture(time: string, generatedAt: string): string {
   const generated = new Date(generatedAt);
-  const { year, month, day, hour, minute } = partsFor(generated);
-  const [serviceHour, serviceMinute] = time.split(":").map(Number);
-  const serviceMinutes = serviceHour * 60 + serviceMinute;
-  const generatedMinutes = Number(hour) * 60 + Number(minute);
+  const { year, month, day } = partsFor(generated);
   const localDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  const candidates = [-1, 0, 1].map((dayOffset) => {
+    const candidateDate = new Date(localDate);
+    candidateDate.setUTCDate(candidateDate.getUTCDate() + dayOffset);
+    const timestamp = serviceTimestamp(candidateDate, time);
+    const epoch = Date.parse(timestamp);
+    return {
+      timestamp,
+      epoch,
+      distance: Math.abs(epoch - generated.getTime())
+    };
+  });
 
-  if (serviceMinutes < generatedMinutes - 120) {
-    localDate.setUTCDate(localDate.getUTCDate() + 1);
-  }
-
-  const date = localDate.toISOString().slice(0, 10);
-  const [serviceYear, serviceMonth, serviceDay] = date.split("-");
-
-  return `${date}T${time}:00${offsetFor(serviceYear, serviceMonth, serviceDay, time)}`;
+  candidates.sort((first, second) => {
+    const distance = first.distance - second.distance;
+    if (distance !== 0) {
+      return distance;
+    }
+    return Number(second.epoch >= generated.getTime()) -
+      Number(first.epoch >= generated.getTime());
+  });
+  return candidates[0].timestamp;
 }

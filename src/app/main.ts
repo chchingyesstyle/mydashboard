@@ -1,5 +1,5 @@
 import { createDashboardClient } from "./api";
-import { renderDashboard } from "./render";
+import { renderDashboard, updateStaleAges } from "./render";
 import type { DashboardPayload } from "../shared/contracts";
 import "./styles.css";
 
@@ -31,16 +31,18 @@ export function startDashboardApp(
   const client = createDashboardClient(fetcher);
   let lastPayload: DashboardPayload | null = null;
   let refreshInFlight = false;
+  let refreshTimer: number | null = null;
+  let clockTimer: number | null = null;
+  let active = false;
 
   const updateClock = (): void => {
-    const clock = root.querySelector<HTMLTimeElement>("[data-dashboard-clock]");
-    if (clock === null) {
-      return;
-    }
-
     const now = new Date();
-    clock.dateTime = now.toISOString();
-    clock.textContent = formatLondonClock(now);
+    const clock = root.querySelector<HTMLTimeElement>("[data-dashboard-clock]");
+    if (clock !== null) {
+      clock.dateTime = now.toISOString();
+      clock.textContent = formatLondonClock(now);
+    }
+    updateStaleAges(root, now);
   };
 
   const updateFullscreenControl = (): void => {
@@ -138,21 +140,57 @@ export function startDashboardApp(
     }
   };
 
-  renderLoading(root);
-  root.addEventListener("click", handleClick);
-  document.addEventListener("fullscreenchange", updateFullscreenControl);
-  void refresh(false);
-  const refreshTimer = window.setInterval(() => {
-    void refresh(false);
-  }, REFRESH_INTERVAL_MS);
-  const clockTimer = window.setInterval(updateClock, CLOCK_INTERVAL_MS);
-
-  window.addEventListener("pagehide", () => {
-    window.clearInterval(refreshTimer);
-    window.clearInterval(clockTimer);
+  const stop = (): void => {
+    if (!active) {
+      return;
+    }
+    active = false;
+    if (refreshTimer !== null) {
+      window.clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+    if (clockTimer !== null) {
+      window.clearInterval(clockTimer);
+      clockTimer = null;
+    }
     root.removeEventListener("click", handleClick);
     document.removeEventListener("fullscreenchange", updateFullscreenControl);
-  }, { once: true });
+  };
+
+  const start = (): void => {
+    if (active) {
+      return;
+    }
+    active = true;
+    root.addEventListener("click", handleClick);
+    document.addEventListener("fullscreenchange", updateFullscreenControl);
+    updateClock();
+    updateFullscreenControl();
+    void refresh(false);
+    refreshTimer = window.setInterval(() => {
+      void refresh(false);
+    }, REFRESH_INTERVAL_MS);
+    clockTimer = window.setInterval(updateClock, CLOCK_INTERVAL_MS);
+  };
+
+  const handlePageHide = (event: PageTransitionEvent): void => {
+    stop();
+    if (!event.persisted) {
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("pageshow", handlePageShow);
+    }
+  };
+
+  const handlePageShow = (event: PageTransitionEvent): void => {
+    if (event.persisted) {
+      start();
+    }
+  };
+
+  renderLoading(root);
+  window.addEventListener("pagehide", handlePageHide);
+  window.addEventListener("pageshow", handlePageShow);
+  start();
 }
 
 const root = document.querySelector<HTMLElement>("#app");

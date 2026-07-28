@@ -296,10 +296,16 @@ async function settlePromises(): Promise<void> {
   }
 }
 
-function dashboardResponse(): Response {
-  return new Response(JSON.stringify(livePayload), {
+function dashboardResponse(payload: DashboardPayload = livePayload): Response {
+  return new Response(JSON.stringify(payload), {
     headers: { etag: "\"dashboard-v1\"" }
   });
+}
+
+function pageTransition(type: "pagehide" | "pageshow", persisted: boolean): Event {
+  const event = new Event(type);
+  Object.defineProperty(event, "persisted", { value: persisted });
+  return event;
 }
 
 describe("dashboard runtime", () => {
@@ -340,6 +346,43 @@ describe("dashboard runtime", () => {
     expect(root.querySelector<HTMLElement>("[data-dashboard-clock]")?.textContent)
       .toBe("14:05:06");
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("advances stale ages after a conditional 304 without rebuilding focused controls", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-28T12:05:30.000Z"));
+    const stalePayload: DashboardPayload = {
+      ...livePayload,
+      generatedAt: "2026-07-28T12:05:30.000Z",
+      status: "partial",
+      departures: {
+        ...livePayload.departures,
+        status: "stale",
+        stale: true,
+        updatedAt: "2026-07-28T12:00:00.000Z"
+      }
+    };
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse(stalePayload))
+      .mockResolvedValue(new Response(null, { status: 304 }));
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+    const departures = getByRole(root, "region", { name: "Departures" });
+    const refresh = getByRole<HTMLButtonElement>(root, "button", {
+      name: "Refresh dashboard"
+    });
+    refresh.focus();
+
+    expect(within(departures).getByText("Stale data · 5 minutes old")).toBeTruthy();
+
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(within(departures).getByText("Stale data · 6 minutes old")).toBeTruthy();
+    expect(getByRole(root, "button", { name: "Refresh dashboard" })).toBe(refresh);
+    expect(document.activeElement).toBe(refresh);
   });
 
   it("temporarily disables manual refresh and preserves data after a connection failure", async () => {
@@ -410,5 +453,48 @@ describe("dashboard runtime", () => {
     window.dispatchEvent(new Event("pagehide"));
     await vi.advanceTimersByTimeAsync(31_000);
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores polling, clock updates, and controls after a persisted page restore", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-28T13:05:05.000Z"));
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(dashboardResponse());
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    const requestFullscreen = vi.fn(async () => undefined);
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      value: null
+    });
+    Object.defineProperty(document.documentElement, "requestFullscreen", {
+      configurable: true,
+      value: requestFullscreen
+    });
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+
+    window.dispatchEvent(pageTransition("pagehide", true));
+    await vi.advanceTimersByTimeAsync(31_000);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(pageTransition("pageshow", true));
+    await settlePromises();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+
+    window.dispatchEvent(pageTransition("pageshow", true));
+    await settlePromises();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+
+    getByRole(root, "button", { name: "Refresh dashboard" }).click();
+    await settlePromises();
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    getByRole(root, "button", { name: "Enter fullscreen" }).click();
+    await settlePromises();
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(root.querySelector<HTMLElement>("[data-dashboard-clock]")?.textContent)
+      .toBe("14:06:06");
   });
 });
