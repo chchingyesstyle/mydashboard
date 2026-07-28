@@ -107,6 +107,25 @@ test("places departures and weather side by side in landscape", async ({
   expect(weather!.x).toBeGreaterThan(departures!.x + departures!.width);
 });
 
+test("keeps departure content out of the weather panel at 800px", async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 800, height: 900 });
+  await openDashboard(page);
+
+  const weather = await page.locator(".weather-panel").boundingBox();
+  const furthestDepartureContentEdge = await page
+    .locator(".departure article > *")
+    .evaluateAll((elements) =>
+      Math.max(...elements.map((element) =>
+        element.getBoundingClientRect().right
+      ))
+    );
+
+  expect(weather).not.toBeNull();
+  expect(furthestDepartureContentEdge).toBeLessThanOrEqual(weather!.x);
+});
+
 test("places weather above departures without horizontal overflow on a phone", async ({
   page
 }) => {
@@ -160,10 +179,16 @@ test("shows a strong keyboard focus indicator on refresh", async ({ page }) => {
 test("labels a cancelled departure with visible text", async ({ page }) => {
   await openDashboard(page);
 
+  await expect(
+    page.locator(".departure-delayed .status-icon-delayed")
+  ).toBeVisible();
   const cancelledDeparture = page
     .getByRole("listitem")
     .filter({ hasText: "Cancelled" });
   await expect(cancelledDeparture).toBeVisible();
+  await expect(
+    cancelledDeparture.locator(".status-icon-cancelled")
+  ).toBeVisible();
   await expect(cancelledDeparture).toContainText(
     "Cancelled due to a fault on this train"
   );

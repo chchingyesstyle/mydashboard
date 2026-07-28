@@ -21,7 +21,18 @@ function element<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function decorativeIcon(kind: "route" | "refresh" | "fullscreen" | "weather"): SVGSVGElement {
+type IconKind =
+  | "route"
+  | "refresh"
+  | "fullscreen"
+  | "weather"
+  | "delayed"
+  | "cancelled"
+  | "stale"
+  | "unavailable";
+type StatusIconKind = "delayed" | "cancelled" | "stale" | "unavailable";
+
+function staticIcon(kind: IconKind): SVGSVGElement {
   const svg = document.createElementNS(SVG_NAMESPACE, "svg");
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("focusable", "false");
@@ -33,7 +44,11 @@ function decorativeIcon(kind: "route" | "refresh" | "fullscreen" | "weather"): S
     route: "M5 12h14m-4-4 4 4-4 4",
     refresh: "M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6",
     fullscreen: "M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5",
-    weather: "M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 18Z"
+    weather: "M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 18Z",
+    delayed: "M12 7v5l3 2m6-2a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z",
+    cancelled: "M7 7l10 10m0-10L7 17m14-5a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z",
+    stale: "M4 12a8 8 0 1 0 2.3-5.7M4 5v7h7",
+    unavailable: "M12 4 21 20H3L12 4Zm0 6v4m0 3h.01"
   };
   path.setAttribute("d", paths[kind]);
   path.setAttribute("fill", "none");
@@ -43,6 +58,21 @@ function decorativeIcon(kind: "route" | "refresh" | "fullscreen" | "weather"): S
   path.setAttribute("stroke-linejoin", "round");
   svg.appendChild(path);
   return svg;
+}
+
+function statusIcon(kind: StatusIconKind): SVGSVGElement {
+  const icon = staticIcon(kind);
+  icon.classList.add("status-icon", `status-icon-${kind}`);
+  return icon;
+}
+
+function appendStatusText(
+  parent: HTMLElement,
+  kind: StatusIconKind,
+  text: string
+): void {
+  parent.appendChild(statusIcon(kind));
+  parent.appendChild(document.createTextNode(text));
 }
 
 function statusText(status: DashboardPayload["status"]): string {
@@ -107,9 +137,13 @@ function panelStatus(
   }
 
   const status = element("p", {
-    className: "panel-status panel-status-stale",
-    text: `Stale data · ${formatDataAge(panel.updatedAt, generatedAt)}`
+    className: "panel-status panel-status-stale"
   });
+  appendStatusText(
+    status,
+    "stale",
+    `Stale data · ${formatDataAge(panel.updatedAt, generatedAt)}`
+  );
   status.setAttribute("role", "status");
   return status;
 }
@@ -129,10 +163,15 @@ function renderDeparture(service: Departure): HTMLLIElement {
     text: formatTime(service.scheduledDeparture)
   });
   scheduled.dateTime = service.scheduledDeparture;
-  const expected = element("p", {
-    className: "departure-expected",
-    text: service.isCancelled ? "Cancelled" : service.expectedDisplay
-  });
+  const expected = element("p", { className: "departure-expected" });
+  const expectedText = service.isCancelled
+    ? "Cancelled"
+    : service.expectedDisplay;
+  if (service.status === "delayed" || service.status === "cancelled") {
+    appendStatusText(expected, service.status, expectedText);
+  } else {
+    expected.textContent = expectedText;
+  }
   const platform = element("p", { className: "departure-platform" });
   if (service.platform === null) {
     appendExpandedValue(platform, "Platform TBC", "Platform to be confirmed");
@@ -174,9 +213,13 @@ function renderDepartures(
   }
   if (panel.status === "unavailable") {
     const alert = element("p", {
-      className: "panel-error",
-      text: panel.error ?? "Live departures are temporarily unavailable."
+      className: "panel-error"
     });
+    appendStatusText(
+      alert,
+      "unavailable",
+      panel.error ?? "Live departures are temporarily unavailable."
+    );
     alert.setAttribute("role", "alert");
     section.appendChild(alert);
     return section;
@@ -222,16 +265,20 @@ function renderWeather(panel: WeatherPanel, generatedAt: string): HTMLElement {
   }
   if (panel.status === "unavailable") {
     const alert = element("p", {
-      className: "panel-error",
-      text: panel.error ?? "Current weather is temporarily unavailable."
+      className: "panel-error"
     });
+    appendStatusText(
+      alert,
+      "unavailable",
+      panel.error ?? "Current weather is temporarily unavailable."
+    );
     alert.setAttribute("role", "alert");
     section.appendChild(alert);
     return section;
   }
 
   const summary = element("div", { className: "weather-summary" });
-  summary.appendChild(decorativeIcon("weather"));
+  summary.appendChild(staticIcon("weather"));
   const temperature = element("p", { className: "weather-temperature" });
   appendExpandedValue(
     temperature,
@@ -280,7 +327,7 @@ function renderWeather(panel: WeatherPanel, generatedAt: string): HTMLElement {
 function renderHeader(payload: DashboardPayload): HTMLElement {
   const header = element("header", { className: "dashboard-header" });
   const route = element("div", { className: "route-heading" });
-  route.appendChild(decorativeIcon("route"));
+  route.appendChild(staticIcon("route"));
   route.appendChild(element("h1", {
     text: `${payload.route.origin.name} to ${payload.route.destination.name}`
   }));
@@ -306,13 +353,13 @@ function renderHeader(payload: DashboardPayload): HTMLElement {
   refresh.type = "button";
   refresh.dataset.dashboardRefresh = "";
   refresh.setAttribute("aria-label", "Refresh dashboard");
-  refresh.appendChild(decorativeIcon("refresh"));
+  refresh.appendChild(staticIcon("refresh"));
   refresh.appendChild(element("span", { text: "Refresh" }));
   const fullscreen = element("button", { className: "fullscreen-control" });
   fullscreen.type = "button";
   fullscreen.dataset.dashboardFullscreen = "";
   fullscreen.setAttribute("aria-label", "Enter fullscreen");
-  fullscreen.appendChild(decorativeIcon("fullscreen"));
+  fullscreen.appendChild(staticIcon("fullscreen"));
   fullscreen.appendChild(element("span", { text: "Fullscreen" }));
   controls.appendChild(refresh);
   controls.appendChild(fullscreen);

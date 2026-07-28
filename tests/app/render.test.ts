@@ -150,6 +150,38 @@ describe("dashboard rendering", () => {
       .getByText("Stale data · 10 minutes old")).toBeTruthy();
   });
 
+  it("renders static icons alongside non-live status text", () => {
+    const root = render({
+      ...livePayload,
+      status: "partial",
+      departures: {
+        ...livePayload.departures,
+        status: "stale",
+        stale: true,
+        updatedAt: "2026-07-28T11:55:00.000Z"
+      },
+      weather: {
+        status: "unavailable",
+        updatedAt: null,
+        stale: false,
+        temperatureC: null,
+        apparentTemperatureC: null,
+        relativeHumidityPercent: null,
+        precipitationMm: null,
+        weatherCode: null,
+        condition: null,
+        windSpeedKph: null,
+        windDirectionDegrees: null,
+        error: "Current weather is temporarily unavailable."
+      }
+    });
+
+    expect(root.querySelector(".status-icon-delayed")).toBeTruthy();
+    expect(root.querySelector(".status-icon-cancelled")).toBeTruthy();
+    expect(root.querySelector(".status-icon-stale")).toBeTruthy();
+    expect(root.querySelector(".status-icon-unavailable")).toBeTruthy();
+  });
+
   it("states when there are no direct departures", () => {
     const root = render({
       ...livePayload,
