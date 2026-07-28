@@ -1,0 +1,19 @@
+import { describe, expect, it } from "vitest";
+import { resolveLondonDeparture } from "../../src/worker/time";
+
+describe("resolveLondonDeparture", () => {
+  it("uses British Summer Time for a summer service", () => {
+    expect(resolveLondonDeparture("12:30", "2026-07-28T11:20:00.000Z"))
+      .toBe("2026-07-28T12:30:00+01:00");
+  });
+
+  it("uses GMT for a winter service", () => {
+    expect(resolveLondonDeparture("09:15", "2026-01-28T08:00:00.000Z"))
+      .toBe("2026-01-28T09:15:00+00:00");
+  });
+
+  it("rolls a late-night summer service into the next London day", () => {
+    expect(resolveLondonDeparture("00:10", "2026-07-28T22:55:00.000Z"))
+      .toBe("2026-07-29T00:10:00+01:00");
+  });
+});
