@@ -11,7 +11,9 @@ These instructions apply to the entire repository.
 - Treat `docs/superpowers/specs/2026-07-28-watford-euston-dashboard-design.md`
   as the base product specification and
   `docs/superpowers/specs/2026-07-28-darwin-pressure-accessibility-design.md`
-  as its current data and accessibility extension.
+  as its current data and accessibility extension. Treat
+  `docs/superpowers/specs/2026-07-28-pressure-two-decimal-design.md` as the
+  current pressure-presentation requirement.
 
 ## Architecture and Data
 
@@ -21,6 +23,9 @@ These instructions apply to the entire repository.
   rail data and keep its Consumer key in the `DARWIN_API_KEY` Worker secret.
 - Use Open-Meteo for current weather conditions, including mean sea-level
   pressure. Do not request forecast series.
+- Display mean sea-level pressure with exactly two decimal places in the web
+  dashboard, for example `1016.80 hPa`, while keeping
+  `weather.pressureMslHpa` numeric or `null` in the public API.
 - Preserve the versioned `/api/v1/dashboard` contract unless an explicit requirement calls for a breaking change.
 - Do not build ESP32 firmware unless explicitly requested. Maintain compatibility through compact JSON, stable enums, ISO 8601 timestamps, `ETag`, and CORS support.
 
