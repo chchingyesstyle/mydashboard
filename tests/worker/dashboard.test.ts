@@ -82,6 +82,22 @@ describe("dashboard service", () => {
     });
   });
 
+  it("keeps a fully cached dashboard snapshot unchanged", async () => {
+    const cache = new MemoryCacheStore();
+    let now = NOW;
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache,
+      now: () => now
+    });
+
+    const first = await getDashboard();
+    now = new Date("2026-07-28T12:00:32.000Z");
+    const second = await getDashboard();
+
+    expect(second).toEqual(first);
+  });
+
   it("returns stale departures and a partial dashboard when rail refresh fails", async () => {
     const cache = new MemoryCacheStore();
     const cachedServices = normalizeHuxley(huxleyFixture);

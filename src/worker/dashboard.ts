@@ -102,10 +102,14 @@ export function createDashboardService(deps: {
     ]);
     const departures = departuresPanel(railResult);
     const weather = weatherPanel(weatherResult);
+    const generatedAt = [departures.updatedAt, weather.updatedAt]
+      .filter((updatedAt): updatedAt is string => updatedAt !== null)
+      .sort()
+      .at(-1) ?? now.toISOString();
 
     return {
       version: 1,
-      generatedAt: now.toISOString(),
+      generatedAt,
       status: dashboardStatus(departures, weather),
       route: ROUTE,
       departures,
