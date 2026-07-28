@@ -117,7 +117,7 @@ describe("dashboard rendering", () => {
     expect(within(departures).getByText("A train fault")).toBeTruthy();
   });
 
-  it("renders only current weather measurements", () => {
+  it("renders current weather and the six-hour rain chance", () => {
     const root = render();
     const weather = getByRole(root, "region", { name: "Current weather" });
 
@@ -126,6 +126,9 @@ describe("dashboard rendering", () => {
     expect(within(weather).getByText("20.8°C")).toBeTruthy();
     expect(within(weather).getByText("63%")).toBeTruthy();
     expect(within(weather).getByText("0 mm")).toBeTruthy();
+    expect(within(weather).getByText("Rain chance, next 6 hours")).toBeTruthy();
+    expect(within(weather).getByText("60%")).toBeTruthy();
+    expect(within(weather).getByText("60 percent")).toBeTruthy();
     expect(within(weather).getByText("12.1 km/h at 240°")).toBeTruthy();
     expect(within(weather).getByText("1016.40 hPa")).toBeTruthy();
     expect(within(weather).getByText("1016.40 hectopascals")).toBeTruthy();
@@ -144,6 +147,20 @@ describe("dashboard rendering", () => {
 
     expect(within(weather).getByText("Pressure")).toBeTruthy();
     expect(within(weather).getByText("Unavailable")).toBeTruthy();
+    expect(within(weather).getByText("21.4°C")).toBeTruthy();
+  });
+
+  it("shows unavailable rain chance without hiding current weather", () => {
+    const weather = getByRole(render({
+      ...livePayload,
+      weather: {
+        ...livePayload.weather,
+        rainChanceNext6HoursPercent: null
+      }
+    }), "region", { name: "Current weather" });
+
+    expect(within(weather).getByText("Rain chance, next 6 hours")).toBeTruthy();
+    expect(within(weather).getByText("Rain chance unavailable")).toBeTruthy();
     expect(within(weather).getByText("21.4°C")).toBeTruthy();
   });
 
