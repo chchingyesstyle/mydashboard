@@ -99,6 +99,16 @@ Wrangler builds the saved source and deploys the Worker named
 `watford-euston-dashboard` to the configured custom domain. Verify both the page
 and `/api/v1/dashboard` after every deployment.
 
+Run the checked production API smoke after deployment:
+
+```bash
+npm run smoke:production
+```
+
+It uses a raw HTTP client to capture the ETag from a `200` response, sends only
+`If-None-Match` on the next request, and exits nonzero unless production returns
+an empty `304` with the same ETag and CORS header.
+
 ## Darwin migration
 
 Huxley is temporary. When the official National Rail Darwin Consumer key is

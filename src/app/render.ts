@@ -95,10 +95,10 @@ function formatTime(value: string): string {
   }).format(new Date(value));
 }
 
-function formatDataAge(updatedAt: string, generatedAt: string): string {
+function formatDataAge(updatedAt: string, now: Date): string {
   const seconds = Math.max(
     0,
-    Math.floor((Date.parse(generatedAt) - Date.parse(updatedAt)) / 1_000)
+    Math.floor((now.getTime() - Date.parse(updatedAt)) / 1_000)
   );
   if (seconds < 60) {
     return `${seconds} ${seconds === 1 ? "second" : "seconds"} old`;
@@ -130,7 +130,7 @@ function appendExpandedValue(
 
 function panelStatus(
   panel: DeparturesPanel | WeatherPanel,
-  generatedAt: string
+  now: Date
 ): HTMLParagraphElement | null {
   if (!panel.stale || panel.updatedAt === null) {
     return null;
@@ -142,7 +142,7 @@ function panelStatus(
   appendStatusText(
     status,
     "stale",
-    `Stale data · ${formatDataAge(panel.updatedAt, generatedAt)}`
+    `Stale data · ${formatDataAge(panel.updatedAt, now)}`
   );
   status.setAttribute("role", "status");
   return status;
@@ -199,7 +199,7 @@ function renderDeparture(service: Departure): HTMLLIElement {
 
 function renderDepartures(
   panel: DeparturesPanel,
-  generatedAt: string
+  now: Date
 ): HTMLElement {
   const section = element("section", { className: "departures-panel" });
   const heading = element("h2", { text: "Departures" });
@@ -207,7 +207,7 @@ function renderDepartures(
   section.setAttribute("aria-labelledby", heading.id);
   section.appendChild(heading);
 
-  const status = panelStatus(panel, generatedAt);
+  const status = panelStatus(panel, now);
   if (status !== null) {
     section.appendChild(status);
   }
@@ -252,14 +252,14 @@ function weatherValue(
   return [name, value];
 }
 
-function renderWeather(panel: WeatherPanel, generatedAt: string): HTMLElement {
+function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
   const section = element("section", { className: "weather-panel" });
   const heading = element("h2", { text: "Current weather" });
   heading.id = "weather-heading";
   section.setAttribute("aria-labelledby", heading.id);
   section.appendChild(heading);
 
-  const status = panelStatus(panel, generatedAt);
+  const status = panelStatus(panel, now);
   if (status !== null) {
     section.appendChild(status);
   }
@@ -372,11 +372,12 @@ function renderHeader(payload: DashboardPayload): HTMLElement {
 
 export function renderDashboard(
   root: HTMLElement,
-  payload: DashboardPayload
+  payload: DashboardPayload,
+  now = new Date()
 ): void {
   const panels = element("div", { className: "dashboard-panels" });
-  panels.appendChild(renderDepartures(payload.departures, payload.generatedAt));
-  panels.appendChild(renderWeather(payload.weather, payload.generatedAt));
+  panels.appendChild(renderDepartures(payload.departures, now));
+  panels.appendChild(renderWeather(payload.weather, now));
 
   const connectionNotice = element("p", {
     className: "connection-notice"

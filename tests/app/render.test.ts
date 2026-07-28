@@ -72,10 +72,13 @@ const livePayload: DashboardPayload = {
   }
 };
 
-function render(payload: DashboardPayload = livePayload): HTMLElement {
+function render(
+  payload: DashboardPayload = livePayload,
+  now = new Date(livePayload.generatedAt)
+): HTMLElement {
   const root = document.createElement("main");
   document.body.appendChild(root);
-  renderDashboard(root, payload);
+  renderDashboard(root, payload, now);
   return root;
 }
 
@@ -148,6 +151,31 @@ describe("dashboard rendering", () => {
       .getByText("Stale data · 5 minutes old")).toBeTruthy();
     expect(within(getByRole(root, "region", { name: "Current weather" }))
       .getByText("Stale data · 10 minutes old")).toBeTruthy();
+  });
+
+  it("uses the client clock to age two stale panels with a stable snapshot timestamp", () => {
+    const root = render({
+      ...livePayload,
+      generatedAt: "2026-07-28T12:00:00.000Z",
+      status: "partial",
+      departures: {
+        ...livePayload.departures,
+        status: "stale",
+        stale: true,
+        updatedAt: "2026-07-28T12:00:00.000Z"
+      },
+      weather: {
+        ...livePayload.weather,
+        status: "stale",
+        stale: true,
+        updatedAt: "2026-07-28T11:50:00.000Z"
+      }
+    }, new Date("2026-07-28T12:07:00.000Z"));
+
+    expect(within(getByRole(root, "region", { name: "Departures" }))
+      .getByText("Stale data · 7 minutes old")).toBeTruthy();
+    expect(within(getByRole(root, "region", { name: "Current weather" }))
+      .getByText("Stale data · 17 minutes old")).toBeTruthy();
   });
 
   it("renders static icons alongside non-live status text", () => {
