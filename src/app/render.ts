@@ -314,7 +314,14 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
       "Wind",
       `${panel.windSpeedKph} km/h at ${panel.windDirectionDegrees}°`,
       `${panel.windSpeedKph} kilometres per hour at ${panel.windDirectionDegrees} degrees`
-    )
+    ),
+    panel.pressureMslHpa === null
+      ? weatherValue("Pressure", "Unavailable", "Pressure unavailable")
+      : weatherValue(
+          "Pressure",
+          `${Math.round(panel.pressureMslHpa)} hPa`,
+          `${Math.round(panel.pressureMslHpa)} hectopascals`
+        )
   ];
   for (const [term, value] of values) {
     measurements.appendChild(term);

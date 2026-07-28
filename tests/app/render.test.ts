@@ -68,6 +68,7 @@ const livePayload: DashboardPayload = {
     condition: "Partly cloudy",
     windSpeedKph: 12.1,
     windDirectionDegrees: 240,
+    pressureMslHpa: 1016.4,
     error: null
   }
 };
@@ -125,8 +126,23 @@ describe("dashboard rendering", () => {
     expect(within(weather).getByText("63%")).toBeTruthy();
     expect(within(weather).getByText("0 mm")).toBeTruthy();
     expect(within(weather).getByText("12.1 km/h at 240°")).toBeTruthy();
+    expect(within(weather).getByText("1016 hPa")).toBeTruthy();
     expect(queryByRole(root, "heading", { name: /forecast/i })).toBeNull();
     expect(queryByRole(root, "list", { name: /forecast/i })).toBeNull();
+  });
+
+  it("shows unavailable pressure without hiding current weather", () => {
+    const weather = getByRole(render({
+      ...livePayload,
+      weather: {
+        ...livePayload.weather,
+        pressureMslHpa: null
+      }
+    }), "region", { name: "Current weather" });
+
+    expect(within(weather).getByText("Pressure")).toBeTruthy();
+    expect(within(weather).getByText("Unavailable")).toBeTruthy();
+    expect(within(weather).getByText("21.4°C")).toBeTruthy();
   });
 
   it("labels stale panels and exposes their data age", () => {
@@ -200,6 +216,7 @@ describe("dashboard rendering", () => {
         condition: null,
         windSpeedKph: null,
         windDirectionDegrees: null,
+        pressureMslHpa: null,
         error: "Current weather is temporarily unavailable."
       }
     });
@@ -260,6 +277,7 @@ describe("dashboard rendering", () => {
         condition: null,
         windSpeedKph: null,
         windDirectionDegrees: null,
+        pressureMslHpa: null,
         error: "Current weather is temporarily unavailable."
       }
     });

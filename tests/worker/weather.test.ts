@@ -12,7 +12,8 @@ describe("Open-Meteo weather provider", () => {
       weatherCode: 2,
       condition: "Partly cloudy",
       windSpeedKph: 12.1,
-      windDirectionDegrees: 240
+      windDirectionDegrees: 240,
+      pressureMslHpa: 1016.4
     });
   });
 
@@ -53,6 +54,15 @@ describe("Open-Meteo weather provider", () => {
     );
   });
 
+  it("keeps current weather available when pressure is omitted", () => {
+    const { pressure_msl: _pressure, ...current } = openMeteoFixture.current;
+
+    expect(normalizeWeather({ ...openMeteoFixture, current })).toMatchObject({
+      temperatureC: 21.4,
+      pressureMslHpa: null
+    });
+  });
+
   it("requests only current weather for Watford Junction", async () => {
     let requestedUrl = "";
     const fetcher = (async (input: string | URL | Request) => {
@@ -70,7 +80,7 @@ describe("Open-Meteo weather provider", () => {
     expect(url.searchParams.get("temperature_unit")).toBe("celsius");
     expect(url.searchParams.get("wind_speed_unit")).toBe("kmh");
     expect(url.searchParams.get("current")).toBe(
-      "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m"
+      "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl"
     );
     expect(requestedUrl).not.toContain("hourly=");
     expect(requestedUrl).not.toContain("daily=");

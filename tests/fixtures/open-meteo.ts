@@ -15,7 +15,8 @@ export const openMeteoFixture = {
     precipitation: "mm",
     weather_code: "wmo code",
     wind_speed_10m: "km/h",
-    wind_direction_10m: "°"
+    wind_direction_10m: "°",
+    pressure_msl: "hPa"
   },
   current: {
     time: "2026-07-28T12:00",
@@ -26,6 +27,7 @@ export const openMeteoFixture = {
     precipitation: 0,
     weather_code: 2,
     wind_speed_10m: 12.1,
-    wind_direction_10m: 240
+    wind_direction_10m: 240,
+    pressure_msl: 1016.4
   }
 };

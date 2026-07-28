@@ -10,6 +10,8 @@ export type WeatherValue = {
     | "condition"
     | "windSpeedKph"
     | "windDirectionDegrees"]: NonNullable<WeatherPanel[Key]>;
+} & {
+  pressureMslHpa: number | null;
 };
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
@@ -20,7 +22,8 @@ const CURRENT_FIELDS = [
   "precipitation",
   "weather_code",
   "wind_speed_10m",
-  "wind_direction_10m"
+  "wind_direction_10m",
+  "pressure_msl"
 ].join(",");
 
 function malformedResponse(): never {
@@ -30,6 +33,17 @@ function malformedResponse(): never {
 function numberValue(current: Record<string, unknown>, field: string): number {
   const value = current[field];
   return typeof value === "number" && Number.isFinite(value) ? value : malformedResponse();
+}
+
+function optionalNumberValue(
+  current: Record<string, unknown>,
+  field: string
+): number | null {
+  const value = current[field];
+  if (value === undefined || value === null) return null;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : malformedResponse();
 }
 
 function conditionFor(weatherCode: number): string {
@@ -99,7 +113,8 @@ export function normalizeWeather(payload: unknown): WeatherValue {
     weatherCode,
     condition: conditionFor(weatherCode),
     windSpeedKph: numberValue(values, "wind_speed_10m"),
-    windDirectionDegrees: numberValue(values, "wind_direction_10m")
+    windDirectionDegrees: numberValue(values, "wind_direction_10m"),
+    pressureMslHpa: optionalNumberValue(values, "pressure_msl")
   };
 }
 

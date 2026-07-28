@@ -29,6 +29,7 @@ const payload: DashboardPayload = {
     condition: null,
     windSpeedKph: null,
     windDirectionDegrees: null,
+    pressureMslHpa: null,
     error: "Current weather is temporarily unavailable."
   }
 };

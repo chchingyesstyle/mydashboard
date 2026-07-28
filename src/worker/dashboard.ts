@@ -51,6 +51,7 @@ function weatherPanel(
       condition: null,
       windSpeedKph: null,
       windDirectionDegrees: null,
+      pressureMslHpa: null,
       error: WEATHER_ERROR
     };
   }

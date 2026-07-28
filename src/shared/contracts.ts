@@ -35,6 +35,7 @@ export interface WeatherPanel {
   condition: string | null;
   windSpeedKph: number | null;
   windDirectionDegrees: number | null;
+  pressureMslHpa: number | null;
   error: string | null;
 }
 

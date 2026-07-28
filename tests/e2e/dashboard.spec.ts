@@ -77,6 +77,7 @@ const liveDashboard: DashboardPayload = {
     condition: "Partly cloudy",
     windSpeedKph: 12.1,
     windDirectionDegrees: 240,
+    pressureMslHpa: 1016.4,
     error: null
   }
 };
