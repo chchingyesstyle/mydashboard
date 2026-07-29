@@ -10,14 +10,19 @@ export const rttLocationFixture = {
         departure: { scheduleAdvertised: "2026-07-29T12:32:00" }
       },
       scheduleMetadata: { operator: { code: "LM" } },
-      locationMetadata: { numberOfVehicles: 10 }
+      locationMetadata: {
+        numberOfVehicles: 10,
+        platform: { planned: "10", actual: "8" }
+      }
     },
     {
       temporalData: {
         departure: { scheduleAdvertised: "2026-07-29T12:37:00" }
       },
       scheduleMetadata: { operator: { code: "LO" } },
-      locationMetadata: {}
+      locationMetadata: {
+        platform: { planned: "9", actual: null }
+      }
     },
     {
       temporalData: {
@@ -36,7 +41,28 @@ export const rttDashboardLocationFixture = {
         departure: { scheduleAdvertised: "2026-07-28T12:10:00" }
       },
       scheduleMetadata: { operator: { code: "LM" } },
-      locationMetadata: { numberOfVehicles: 10 }
+      locationMetadata: {
+        numberOfVehicles: 10,
+        platform: { planned: "8", actual: "7" }
+      }
+    },
+    {
+      temporalData: {
+        departure: { scheduleAdvertised: "2026-07-28T12:15:00" }
+      },
+      scheduleMetadata: { operator: { code: "LM" } },
+      locationMetadata: {
+        platform: { planned: "7", actual: "6" }
+      }
+    },
+    {
+      temporalData: {
+        departure: { scheduleAdvertised: "2026-07-28T12:25:00" }
+      },
+      scheduleMetadata: { operator: { code: "LM" } },
+      locationMetadata: {
+        platform: { planned: "5", actual: null }
+      }
     }
   ]
 };

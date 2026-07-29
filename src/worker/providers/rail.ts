@@ -62,6 +62,7 @@ function departureFrom(service: DarwinService, generatedAt: string): Departure {
   const reason = status === "cancelled"
     ? stringValue(service.cancelReason)
     : stringValue(service.delayReason);
+  const platform = stringValue(service.platform);
 
   return {
     id: stringValue(service.serviceID) ?? malformedResponse(),
@@ -72,7 +73,8 @@ function departureFrom(service: DarwinService, generatedAt: string): Departure {
         ? resolveLondonDeparture(expectedDisplay, generatedAt)
         : null,
     expectedDisplay,
-    platform: stringValue(service.platform),
+    platform,
+    platformStatus: platform === null ? null : "live",
     operator: stringValue(service.operator) ?? malformedResponse(),
     operatorCode: stringValue(service.operatorCode) ?? malformedResponse(),
     finalDestination: finalDestinationFrom(service.destination),

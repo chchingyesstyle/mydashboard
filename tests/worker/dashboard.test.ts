@@ -142,7 +142,7 @@ describe("dashboard service", () => {
     expect(dashboard.route.destination.crs).toBe(destination);
   });
 
-  it("keeps rail, weather, and coach caches separate by route", async () => {
+  it("keeps rail, weather, and RTT enrichment caches separate by route", async () => {
     const cache = new MemoryCacheStore();
     const getDashboard = createDashboardService({
       fetcher: networkFetcher(),
@@ -160,8 +160,8 @@ describe("dashboard service", () => {
       "rail:EUS-WFJ",
       "weather:WFJ",
       "weather:EUS",
-      "rtt-coaches:WFJ-EUS",
-      "rtt-coaches:EUS-WFJ"
+      "rtt-enrichment:WFJ-EUS",
+      "rtt-enrichment:EUS-WFJ"
     ]));
   });
 
@@ -228,6 +228,32 @@ describe("dashboard service", () => {
     ).toBe(true);
   });
 
+  it("uses Darwin, RTT actual, then RTT planned platform priority", async () => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key",
+      rttApiToken: "refresh-token"
+    });
+
+    const services = (await getDashboard()).departures.services;
+
+    expect(services.find(({ id }) => id === "on-time")).toMatchObject({
+      platform: "9",
+      platformStatus: "live"
+    });
+    expect(services.find(({ id }) => id === "delayed")).toMatchObject({
+      platform: "6",
+      platformStatus: "live",
+      coachCount: null
+    });
+    expect(services.find(({ id }) => id === "unknown")).toMatchObject({
+      platform: "5",
+      platformStatus: "planned"
+    });
+  });
+
   it("keeps live Darwin departures when RTT is unavailable", async () => {
     const getDashboard = createDashboardService({
       fetcher: networkFetcher({
@@ -244,6 +270,11 @@ describe("dashboard service", () => {
     expect(dashboard.departures.status).toBe("live");
     expect(dashboard.departures.services.every(
       (service) => service.coachCount === null
+    )).toBe(true);
+    expect(dashboard.departures.services.every((service) =>
+      service.platform === null
+        ? service.platformStatus === null
+        : service.platformStatus === "live"
     )).toBe(true);
   });
 
@@ -264,7 +295,7 @@ describe("dashboard service", () => {
     expect(second).toEqual(first);
   });
 
-  it("refreshes RTT coach counts no more often than every five minutes", async () => {
+  it("refreshes RTT enrichment no more often than every five minutes", async () => {
     let now = NOW;
     let rttLocationRequests = 0;
     const baseFetcher = networkFetcher();

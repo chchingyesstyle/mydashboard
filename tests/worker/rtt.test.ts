@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../../src/shared/contracts";
 import {
   createRttClient,
-  normalizeRttCoachCounts
+  normalizeRttServiceEnrichments
 } from "../../src/worker/providers/rtt";
 import {
   rttAccessTokenFixture,
@@ -12,12 +12,23 @@ import {
 const NOW = new Date("2026-07-29T12:00:00.000Z");
 
 describe("Realtime Trains coach-count provider", () => {
-  it("normalizes only valid available passenger vehicle counts", () => {
-    expect(normalizeRttCoachCounts(rttLocationFixture)).toEqual([{
-      scheduledDeparture: "2026-07-29T12:32:00",
-      operatorCode: "LM",
-      coachCount: 10
-    }]);
+  it("normalizes available coach and platform enrichment independently", () => {
+    expect(normalizeRttServiceEnrichments(rttLocationFixture)).toEqual([
+      {
+        scheduledDeparture: "2026-07-29T12:32:00",
+        operatorCode: "LM",
+        coachCount: 10,
+        actualPlatform: "8",
+        plannedPlatform: "10"
+      },
+      {
+        scheduledDeparture: "2026-07-29T12:37:00",
+        operatorCode: "LO",
+        coachCount: null,
+        actualPlatform: null,
+        plannedPlatform: "9"
+      }
+    ]);
   });
 
   it("uses one access token for both route location requests", async () => {
@@ -36,8 +47,8 @@ describe("Realtime Trains coach-count provider", () => {
     }) as typeof fetch;
     const client = createRttClient(fetcher, "refresh-token");
 
-    await client.fetchCoachCounts(ROUTES["WFJ-EUS"], NOW);
-    await client.fetchCoachCounts(ROUTES["EUS-WFJ"], NOW);
+    await client.fetchServiceEnrichments(ROUTES["WFJ-EUS"], NOW);
+    await client.fetchServiceEnrichments(ROUTES["EUS-WFJ"], NOW);
 
     expect(requests.filter(({ url }) =>
       url.endsWith("/api/get_access_token"))).toHaveLength(1);
@@ -77,8 +88,8 @@ describe("Realtime Trains coach-count provider", () => {
     }) as typeof fetch;
     const client = createRttClient(fetcher, "refresh-token");
 
-    await client.fetchCoachCounts(ROUTES["WFJ-EUS"], NOW);
-    await client.fetchCoachCounts(
+    await client.fetchServiceEnrichments(ROUTES["WFJ-EUS"], NOW);
+    await client.fetchServiceEnrichments(
       ROUTES["EUS-WFJ"],
       new Date("2026-07-29T12:59:31.000Z")
     );
@@ -102,7 +113,7 @@ describe("Realtime Trains coach-count provider", () => {
       "refresh-token"
     );
 
-    await expect(client.fetchCoachCounts(
+    await expect(client.fetchServiceEnrichments(
       ROUTES["WFJ-EUS"],
       NOW
     )).rejects.toThrow(message);
@@ -151,7 +162,7 @@ describe("Realtime Trains coach-count provider", () => {
     });
     const client = createRttClient(fetcher, refreshToken);
 
-    await expect(client.fetchCoachCounts(
+    await expect(client.fetchServiceEnrichments(
       ROUTES["WFJ-EUS"],
       NOW
     )).rejects.toThrow(expectedError);
@@ -169,7 +180,7 @@ describe("Realtime Trains coach-count provider", () => {
       ));
     }) as typeof fetch, "refresh-token");
 
-    await expect(client.fetchCoachCounts(
+    await expect(client.fetchServiceEnrichments(
       ROUTES["WFJ-EUS"],
       NOW
     )).rejects.toThrow("RTT location response was malformed");
@@ -184,7 +195,7 @@ describe("Realtime Trains coach-count provider", () => {
           : rttLocationFixture
       ))) as typeof fetch, "refresh-token");
 
-    await client.fetchCoachCounts(ROUTES["WFJ-EUS"], NOW);
+    await client.fetchServiceEnrichments(ROUTES["WFJ-EUS"], NOW);
 
     expect(timeout).toHaveBeenCalledTimes(2);
     expect(timeout).toHaveBeenNthCalledWith(1, 7000);

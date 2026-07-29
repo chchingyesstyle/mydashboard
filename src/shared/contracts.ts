@@ -8,6 +8,7 @@ export interface Departure {
   expectedDeparture: string | null;
   expectedDisplay: string;
   platform: string | null;
+  platformStatus: "live" | "planned" | null;
   operator: string;
   operatorCode: string;
   finalDestination: {

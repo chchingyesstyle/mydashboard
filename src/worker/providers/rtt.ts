@@ -3,14 +3,19 @@ import type { RouteConfig } from "../../shared/contracts";
 const RTT_BASE_URL = "https://data.rtt.io";
 const EXPIRY_MARGIN_MS = 30_000;
 
-export interface CoachCount {
+export interface RttServiceEnrichment {
   scheduledDeparture: string;
   operatorCode: string;
-  coachCount: number;
+  coachCount: number | null;
+  actualPlatform: string | null;
+  plannedPlatform: string | null;
 }
 
 export interface RttClient {
-  fetchCoachCounts(route: RouteConfig, now: Date): Promise<CoachCount[]>;
+  fetchServiceEnrichments(
+    route: RouteConfig,
+    now: Date
+  ): Promise<RttServiceEnrichment[]>;
 }
 
 interface AccessToken {
@@ -42,11 +47,27 @@ function isScheduledDeparture(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value);
 }
 
-export function normalizeRttCoachCounts(response: unknown): CoachCount[] {
+function optionalCoachCount(value: unknown): number | null {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0
+    ? value
+    : null;
+}
+
+function optionalPlatform(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : null;
+}
+
+export function normalizeRttServiceEnrichments(
+  response: unknown
+): RttServiceEnrichment[] {
   const payload = record(response);
   if (payload === null || !Array.isArray(payload.services)) malformedResponse();
 
-  return payload.services.flatMap((service): CoachCount[] => {
+  return payload.services.flatMap((service): RttServiceEnrichment[] => {
     const serviceRecord = record(service);
     if (serviceRecord === null) return [];
 
@@ -56,21 +77,30 @@ export function normalizeRttCoachCounts(response: unknown): CoachCount[] {
     const operatorCode = valueAt(serviceRecord, [
       "scheduleMetadata", "operator", "code"
     ]);
-    const coachCount = valueAt(serviceRecord, [
-      "locationMetadata", "numberOfVehicles"
-    ]);
     if (
       !isScheduledDeparture(scheduledDeparture) ||
       typeof operatorCode !== "string" ||
-      operatorCode.length === 0 ||
-      typeof coachCount !== "number" ||
-      !Number.isInteger(coachCount) ||
-      coachCount < 0
+      operatorCode.length === 0
     ) {
       return [];
     }
 
-    return [{ scheduledDeparture, operatorCode, coachCount }];
+    return [{
+      scheduledDeparture,
+      operatorCode,
+      coachCount: optionalCoachCount(valueAt(
+        serviceRecord,
+        ["locationMetadata", "numberOfVehicles"]
+      )),
+      actualPlatform: optionalPlatform(valueAt(
+        serviceRecord,
+        ["locationMetadata", "platform", "actual"]
+      )),
+      plannedPlatform: optionalPlatform(valueAt(
+        serviceRecord,
+        ["locationMetadata", "platform", "planned"]
+      ))
+    }];
   }).sort((first, second) =>
     first.scheduledDeparture.localeCompare(second.scheduledDeparture) ||
     first.operatorCode.localeCompare(second.operatorCode)
@@ -134,10 +164,10 @@ export function createRttClient(
   };
 
   return {
-    async fetchCoachCounts(
+    async fetchServiceEnrichments(
       route: RouteConfig,
       now: Date
-    ): Promise<CoachCount[]> {
+    ): Promise<RttServiceEnrichment[]> {
       const token = await tokenFor(now);
       const locationUrl = new URL(`${RTT_BASE_URL}/rtt/location`);
       locationUrl.searchParams.set("code", `gb-nr:${route.origin.crs}`);
@@ -154,7 +184,7 @@ export function createRttClient(
       }
 
       try {
-        return normalizeRttCoachCounts(await responseJson(
+        return normalizeRttServiceEnrichments(await responseJson(
           locationResponse,
           "RTT location response was malformed"
         ));

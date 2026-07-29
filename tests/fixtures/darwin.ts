@@ -67,7 +67,8 @@ export const darwinFixture = {
       serviceID: "unknown",
       serviceIdPercentEncoded: "unknown",
       std: "12:25",
-      etd: "Delayed"
+      etd: "Delayed",
+      platform: null
     })
   ],
   busServices: null,

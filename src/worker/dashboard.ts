@@ -9,7 +9,10 @@ import {
 } from "../shared/contracts";
 import { loadWithFallback, type CacheStore, type CachedResult } from "./provider-cache";
 import { fetchDepartures } from "./providers/rail";
-import { createRttClient, type CoachCount } from "./providers/rtt";
+import {
+  createRttClient,
+  type RttServiceEnrichment
+} from "./providers/rtt";
 import { fetchWeather, type WeatherValue } from "./providers/weather";
 
 const RAIL_ERROR = "Live departures are temporarily unavailable.";
@@ -38,25 +41,45 @@ function departureKey(
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}|${operatorCode}`;
 }
 
-function coachCountKey(coachCount: CoachCount): string {
-  return `${coachCount.scheduledDeparture}|${coachCount.operatorCode}`;
+function enrichmentKey(enrichment: RttServiceEnrichment): string {
+  return `${enrichment.scheduledDeparture}|${enrichment.operatorCode}`;
 }
 
 function enrichDepartures(
   departures: DeparturesPanel,
-  coachCounts: CoachCount[]
+  enrichments: RttServiceEnrichment[]
 ): DeparturesPanel {
-  const coachCountByService = new Map(
-    coachCounts.map((coachCount) => [coachCountKey(coachCount), coachCount.coachCount])
+  const enrichmentByService = new Map(
+    enrichments.map((enrichment) => [
+      enrichmentKey(enrichment),
+      enrichment
+    ])
   );
   return {
     ...departures,
-    services: departures.services.map((service) => ({
-      ...service,
-      coachCount: coachCountByService.get(
+    services: departures.services.map((service) => {
+      const enrichment = enrichmentByService.get(
         departureKey(service.scheduledDeparture, service.operatorCode)
-      ) ?? null
-    }))
+      );
+      const actualPlatform = enrichment?.actualPlatform ?? null;
+      const plannedPlatform = enrichment?.plannedPlatform ?? null;
+      const platform = service.platform ??
+        actualPlatform ??
+        plannedPlatform ??
+        null;
+      const platformStatus = service.platform !== null || actualPlatform !== null
+        ? "live"
+        : plannedPlatform !== null
+          ? "planned"
+          : null;
+
+      return {
+        ...service,
+        platform,
+        platformStatus,
+        coachCount: enrichment?.coachCount ?? null
+      };
+    })
   };
 }
 
@@ -143,18 +166,18 @@ export function createDashboardService(deps: {
 
   return async (route: RouteConfig = DEFAULT_ROUTE) => {
     const now = deps.now();
-    const coachCounts = rttClient !== null
+    const serviceEnrichments = rttClient !== null
       ? loadWithFallback({
         cache: deps.cache,
-        key: `rtt-coaches:${route.id}`,
+        key: `rtt-enrichment:${route.id}`,
         now,
         freshForMs: 5 * 60_000,
         staleForMs: 5 * 60_000,
-        load: () => rttClient.fetchCoachCounts(route, now)
+        load: () => rttClient.fetchServiceEnrichments(route, now)
       }).then((result) => result.value)
-        .catch(() => [] as CoachCount[])
-      : Promise.resolve([] as CoachCount[]);
-    const [railResult, weatherResult, coachCountResult] = await Promise.allSettled([
+        .catch(() => [] as RttServiceEnrichment[])
+      : Promise.resolve([] as RttServiceEnrichment[]);
+    const [railResult, weatherResult, enrichmentResult] = await Promise.allSettled([
       loadWithFallback({
         cache: deps.cache,
         key: `rail:${route.id}`,
@@ -176,11 +199,11 @@ export function createDashboardService(deps: {
         staleForMs: 30 * 60_000,
         load: () => fetchWeather(deps.fetcher, now, route)
       }),
-      coachCounts
+      serviceEnrichments
     ]);
     const departures = enrichDepartures(
       departuresPanel(railResult),
-      coachCountResult.status === "fulfilled" ? coachCountResult.value : []
+      enrichmentResult.status === "fulfilled" ? enrichmentResult.value : []
     );
     const weather = weatherPanel(weatherResult);
     const generatedAt = [departures.updatedAt, weather.updatedAt]

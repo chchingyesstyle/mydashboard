@@ -100,6 +100,22 @@ describe("Darwin rail provider", () => {
     expect(service.finalDestination).toBeNull();
   });
 
+  it("marks Darwin platforms as live and missing platforms as unavailable", () => {
+    const services = normalizeDarwin(
+      darwinFixture,
+      ROUTES["WFJ-EUS"].destination.crs
+    );
+
+    expect(services.find(({ id }) => id === "on-time")).toMatchObject({
+      platform: "9",
+      platformStatus: "live"
+    });
+    expect(services.find(({ id }) => id === "delayed")).toMatchObject({
+      platform: null,
+      platformStatus: null
+    });
+  });
+
   it("rejects a Darwin board filtered to a different destination", () => {
     expect(() => normalizeDarwin(
       { ...reverseDarwinFixture, filtercrs: "EUS" },
