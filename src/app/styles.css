@@ -98,6 +98,10 @@ button {
   border-bottom: 1px solid var(--line);
 }
 
+.route-overview {
+  min-width: 0;
+}
+
 .route-heading {
   display: flex;
   min-width: 0;
@@ -206,6 +210,14 @@ button {
   gap: 0.625rem;
 }
 
+.route-selector {
+  display: inline-flex;
+  gap: 0.375rem;
+  max-width: 100%;
+  margin-top: 0.75rem;
+}
+
+.route-selector button,
 .dashboard-controls button {
   display: inline-flex;
   min-width: 2.75rem;
@@ -224,23 +236,42 @@ button {
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.route-selector button:hover,
 .dashboard-controls button:hover {
   opacity: 0.82;
   transform: translateY(-1px);
 }
 
+.route-selector button:active,
 .dashboard-controls button:active {
   transform: translateY(0);
 }
 
+.route-selector button:disabled,
 .dashboard-controls button:disabled {
   cursor: wait;
   opacity: 0.45;
 }
 
+.route-selector button:focus-visible,
 .dashboard-controls button:focus-visible {
   outline: 3px solid var(--amber);
   outline-offset: 3px;
+}
+
+.route-selector button[aria-pressed="true"] {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+  font-weight: 700;
+}
+
+.route-switch-status {
+  max-width: 100%;
+  margin: 0.5rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .connection-notice,
@@ -505,6 +536,12 @@ button {
     width: 100%;
   }
 
+  .route-selector {
+    display: flex;
+    width: 100%;
+  }
+
+  .route-selector button,
   .dashboard-controls button {
     flex: 1;
   }
@@ -533,6 +570,7 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .route-selector button,
   .dashboard-controls button {
     transition-duration: 0s;
   }

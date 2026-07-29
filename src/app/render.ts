@@ -4,6 +4,7 @@ import type {
   DeparturesPanel,
   WeatherPanel
 } from "../shared/contracts";
+import { ROUTES } from "../shared/contracts";
 import { updateThemeControl } from "./theme";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
@@ -400,11 +401,35 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
 
 function renderHeader(payload: DashboardPayload): HTMLElement {
   const header = element("header", { className: "dashboard-header" });
+  const routeOverview = element("div", { className: "route-overview" });
   const route = element("div", { className: "route-heading" });
   route.appendChild(staticIcon("route"));
   route.appendChild(element("h1", {
     text: `${payload.route.origin.name} to ${payload.route.destination.name}`
   }));
+  const selector = element("div", { className: "route-selector" });
+  selector.setAttribute("role", "group");
+  selector.setAttribute("aria-label", "Travel direction");
+  for (const [routeId, label] of [
+    ["WFJ-EUS", "To Euston"],
+    ["EUS-WFJ", "To Watford"]
+  ] as const) {
+    const control = element("button", { text: label });
+    control.type = "button";
+    control.dataset.dashboardRoute = routeId;
+    control.setAttribute("aria-pressed", String(
+      payload.route.origin.crs === ROUTES[routeId].origin.crs &&
+      payload.route.destination.crs === ROUTES[routeId].destination.crs
+    ));
+    selector.appendChild(control);
+  }
+  const routeStatus = element("p", { className: "route-switch-status" });
+  routeStatus.dataset.dashboardRouteStatus = "";
+  routeStatus.setAttribute("role", "status");
+  routeStatus.hidden = true;
+  routeOverview.appendChild(route);
+  routeOverview.appendChild(selector);
+  routeOverview.appendChild(routeStatus);
 
   const metadata = element("div", { className: "dashboard-metadata" });
   const clock = element("time", {
@@ -444,7 +469,7 @@ function renderHeader(payload: DashboardPayload): HTMLElement {
   controls.appendChild(refresh);
   controls.appendChild(fullscreen);
 
-  header.appendChild(route);
+  header.appendChild(routeOverview);
   header.appendChild(metadata);
   header.appendChild(controls);
   return header;

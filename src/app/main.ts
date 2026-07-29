@@ -3,6 +3,9 @@ import { renderDashboard, updateStaleAges } from "./render";
 import { toggleTheme, updateThemeControl } from "./theme";
 import {
   DEFAULT_ROUTE_ID,
+  ROUTES,
+  isRouteId,
+  type RouteId,
   type DashboardPayload
 } from "../shared/contracts";
 import "./styles.css";
@@ -34,6 +37,7 @@ export function startDashboardApp(
 ): void {
   const client = createDashboardClient(fetcher);
   let lastPayload: DashboardPayload | null = null;
+  let activeRouteId: RouteId = DEFAULT_ROUTE_ID;
   let refreshInFlight = false;
   let refreshTimer: number | null = null;
   let clockTimer: number | null = null;
@@ -85,7 +89,29 @@ export function startDashboardApp(
     notice.textContent = message;
   };
 
-  const refresh = async (disableControl: boolean): Promise<void> => {
+  const setRouteSwitchState = (routeId: RouteId | null): void => {
+    const controls = root.querySelectorAll<HTMLButtonElement>(
+      "[data-dashboard-route]"
+    );
+    for (const control of controls) {
+      control.disabled = routeId !== null;
+    }
+    const status = root.querySelector<HTMLElement>(
+      "[data-dashboard-route-status]"
+    );
+    if (status === null) {
+      return;
+    }
+    status.hidden = routeId === null;
+    status.textContent = routeId === null
+      ? ""
+      : `Loading ${ROUTES[routeId].origin.name} to ${ROUTES[routeId].destination.name}…`;
+  };
+
+  const refresh = async (
+    routeId: RouteId,
+    mode: "automatic" | "manual" | "switch"
+  ): Promise<void> => {
     if (refreshInFlight) {
       return;
     }
@@ -94,14 +120,18 @@ export function startDashboardApp(
     const refreshControl = root.querySelector<HTMLButtonElement>(
       "[data-dashboard-refresh]"
     );
-    if (disableControl && refreshControl !== null) {
+    if (mode === "manual" && refreshControl !== null) {
       refreshControl.disabled = true;
+    }
+    if (mode === "switch") {
+      setRouteSwitchState(routeId);
     }
 
     try {
-      const result = await client.load(DEFAULT_ROUTE_ID);
-      if (result.changed) {
+      const result = await client.load(routeId);
+      if (result.changed || routeId !== activeRouteId) {
         lastPayload = result.payload;
+        activeRouteId = routeId;
         renderDashboard(root, result.payload);
         updateClock();
         updateFullscreenControl();
@@ -115,8 +145,14 @@ export function startDashboardApp(
       );
     } finally {
       refreshInFlight = false;
-      if (refreshControl !== null) {
-        refreshControl.disabled = false;
+      if (mode === "switch") {
+        setRouteSwitchState(null);
+      }
+      const currentRefreshControl = root.querySelector<HTMLButtonElement>(
+        "[data-dashboard-refresh]"
+      );
+      if (currentRefreshControl !== null) {
+        currentRefreshControl.disabled = false;
       }
     }
   };
@@ -143,8 +179,20 @@ export function startDashboardApp(
       updateThemeControl(themeControl);
       return;
     }
+    const routeControl = target.closest<HTMLButtonElement>(
+      "[data-dashboard-route]"
+    );
+    const routeId = routeControl?.dataset.dashboardRoute;
+    if (
+      routeId !== undefined &&
+      isRouteId(routeId) &&
+      routeId !== activeRouteId
+    ) {
+      void refresh(routeId, "switch");
+      return;
+    }
     if (target.closest("[data-dashboard-refresh]") !== null) {
-      void refresh(true);
+      void refresh(activeRouteId, "manual");
       return;
     }
     if (target.closest("[data-dashboard-fullscreen]") !== null) {
@@ -178,9 +226,9 @@ export function startDashboardApp(
     document.addEventListener("fullscreenchange", updateFullscreenControl);
     updateClock();
     updateFullscreenControl();
-    void refresh(false);
+    void refresh(activeRouteId, "automatic");
     refreshTimer = window.setInterval(() => {
-      void refresh(false);
+      void refresh(activeRouteId, "automatic");
     }, REFRESH_INTERVAL_MS);
     clockTimer = window.setInterval(updateClock, CLOCK_INTERVAL_MS);
   };

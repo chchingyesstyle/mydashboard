@@ -79,6 +79,27 @@ const livePayload: DashboardPayload = {
   }
 };
 
+const reversePayload: DashboardPayload = {
+  ...livePayload,
+  route: {
+    origin: { name: "London Euston", crs: "EUS" },
+    destination: { name: "Watford Junction", crs: "WFJ" }
+  },
+  departures: {
+    ...livePayload.departures,
+    services: livePayload.departures.services.map((service) => ({
+      ...service,
+      id: `reverse-${service.id}`
+    }))
+  },
+  weather: {
+    ...livePayload.weather,
+    temperatureC: 22.1,
+    condition: "Clear sky",
+    weatherCode: 0
+  }
+};
+
 function render(
   payload: DashboardPayload = livePayload,
   now = new Date(livePayload.generatedAt)
@@ -117,6 +138,35 @@ describe("dashboard rendering", () => {
     expect(getByRole(root, "button", {
       name: "Switch to dark mode"
     })).toBeTruthy();
+  });
+
+  it("renders two route controls with the loaded direction selected", () => {
+    const root = render();
+    const toEuston = getByRole<HTMLButtonElement>(root, "button", {
+      name: "To Euston"
+    });
+    const toWatford = getByRole<HTMLButtonElement>(root, "button", {
+      name: "To Watford"
+    });
+
+    expect(toEuston.getAttribute("aria-pressed")).toBe("true");
+    expect(toWatford.getAttribute("aria-pressed")).toBe("false");
+    expect(toEuston.dataset.dashboardRoute).toBe("WFJ-EUS");
+    expect(toWatford.dataset.dashboardRoute).toBe("EUS-WFJ");
+    expect(
+      root.querySelector<HTMLElement>("[data-dashboard-route-status]")?.hidden
+    ).toBe(true);
+  });
+
+  it("selects To Watford for an Euston to Watford payload", () => {
+    const root = render(reversePayload);
+
+    expect(getByRole(root, "heading", {
+      name: "London Euston to Watford Junction"
+    })).toBeTruthy();
+    expect(getByRole(root, "button", {
+      name: "To Watford"
+    }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("uses singular grammar and omits unavailable coach counts", () => {
@@ -475,9 +525,12 @@ async function settlePromises(): Promise<void> {
   }
 }
 
-function dashboardResponse(payload: DashboardPayload = livePayload): Response {
+function dashboardResponse(
+  payload: DashboardPayload = livePayload,
+  etag = "\"dashboard-v1\""
+): Response {
   return new Response(JSON.stringify(payload), {
-    headers: { etag: "\"dashboard-v1\"" }
+    headers: { etag }
   });
 }
 
@@ -488,6 +541,157 @@ function pageTransition(type: "pagehide" | "pageshow", persisted: boolean): Even
 }
 
 describe("dashboard runtime", () => {
+  it("keeps current data visible while switching and replaces it on success", async () => {
+    let resolveReverse: ((response: Response) => void) | undefined;
+    const reverseRequest = new Promise<Response>((resolve) => {
+      resolveReverse = resolve;
+    });
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse(livePayload, "\"watford\""))
+      .mockReturnValueOnce(reverseRequest);
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+
+    getByRole(root, "button", { name: "To Watford" }).click();
+
+    expect(getByRole(root, "heading", {
+      name: "Watford Junction to London Euston"
+    })).toBeTruthy();
+    expect(within(root).getByText(
+      "Loading London Euston to Watford Junction…"
+    )).toBeTruthy();
+    expect(getByRole<HTMLButtonElement>(root, "button", {
+      name: "To Euston"
+    }).disabled).toBe(true);
+    expect(getByRole<HTMLButtonElement>(root, "button", {
+      name: "To Watford"
+    }).disabled).toBe(true);
+
+    resolveReverse?.(dashboardResponse(reversePayload, "\"euston\""));
+    await settlePromises();
+
+    expect(getByRole(root, "heading", {
+      name: "London Euston to Watford Junction"
+    })).toBeTruthy();
+    expect(getByRole(root, "button", {
+      name: "To Watford"
+    }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(getByRole(root, "region", {
+      name: "Current weather"
+    })).getByText("22.1°C")).toBeTruthy();
+  });
+
+  it("retains the loaded route and re-enables controls after switch failure", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse())
+      .mockRejectedValueOnce(new Error("offline"));
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+
+    getByRole(root, "button", { name: "To Watford" }).click();
+    await settlePromises();
+
+    expect(getByRole(root, "heading", {
+      name: "Watford Junction to London Euston"
+    })).toBeTruthy();
+    expect(within(root).getByText(
+      "Connection lost. Showing the last updated data."
+    )).toBeTruthy();
+    expect(getByRole<HTMLButtonElement>(root, "button", {
+      name: "To Euston"
+    }).disabled).toBe(false);
+    expect(getByRole<HTMLButtonElement>(root, "button", {
+      name: "To Watford"
+    }).disabled).toBe(false);
+  });
+
+  it("ignores route clicks while a switch is in flight", async () => {
+    const pending = new Promise<Response>(() => undefined);
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse())
+      .mockReturnValueOnce(pending);
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+
+    getByRole(root, "button", { name: "To Watford" }).click();
+    getByRole(root, "button", { name: "To Euston" }).click();
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("automatically refreshes the selected route", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse(livePayload, "\"watford\""))
+      .mockResolvedValueOnce(dashboardResponse(reversePayload, "\"euston\""))
+      .mockResolvedValue(new Response(null, { status: 304 }));
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+    getByRole(root, "button", { name: "To Watford" }).click();
+    await settlePromises();
+
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      3,
+      "/api/v1/dashboard?route=EUS-WFJ",
+      { headers: { "If-None-Match": "\"euston\"" } }
+    );
+  });
+
+  it("manually refreshes the selected route", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse(livePayload, "\"watford\""))
+      .mockResolvedValueOnce(dashboardResponse(reversePayload, "\"euston\""))
+      .mockResolvedValue(new Response(null, { status: 304 }));
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+    getByRole(root, "button", { name: "To Watford" }).click();
+    await settlePromises();
+
+    getByRole(root, "button", { name: "Refresh dashboard" }).click();
+    await settlePromises();
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      3,
+      "/api/v1/dashboard?route=EUS-WFJ",
+      { headers: { "If-None-Match": "\"euston\"" } }
+    );
+  });
+
+  it("restores a previously loaded route after its conditional 304", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(dashboardResponse(livePayload, "\"watford\""))
+      .mockResolvedValueOnce(dashboardResponse(reversePayload, "\"euston\""))
+      .mockResolvedValueOnce(new Response(null, { status: 304 }));
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+    getByRole(root, "button", { name: "To Watford" }).click();
+    await settlePromises();
+
+    getByRole(root, "button", { name: "To Euston" }).click();
+    await settlePromises();
+
+    expect(getByRole(root, "heading", {
+      name: "Watford Junction to London Euston"
+    })).toBeTruthy();
+    expect(within(getByRole(root, "region", {
+      name: "Current weather"
+    })).getByText("21.4°C")).toBeTruthy();
+  });
+
   it("switches to dark mode and persists the selection", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(dashboardResponse());
     const root = document.createElement("main");
