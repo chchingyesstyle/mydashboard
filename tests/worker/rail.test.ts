@@ -67,6 +67,39 @@ describe("Darwin rail provider", () => {
     ]);
   });
 
+  it("normalizes each train's actual final destination", () => {
+    const forward = normalizeDarwin(
+      darwinFixture,
+      ROUTES["WFJ-EUS"].destination.crs
+    );
+    const reverse = normalizeDarwin(
+      reverseDarwinFixture,
+      ROUTES["EUS-WFJ"].destination.crs
+    );
+
+    expect(forward[0].finalDestination).toEqual({
+      name: "London Euston",
+      crs: "EUS"
+    });
+    expect(reverse.find(({ id }) => id === "reverse-through")
+      ?.finalDestination).toEqual({
+      name: "Birmingham New Street",
+      crs: "BHM"
+    });
+  });
+
+  it("uses null when Darwin omits a valid final destination", () => {
+    const [service] = normalizeDarwin({
+      ...reverseDarwinFixture,
+      trainServices: [{
+        ...reverseDarwinFixture.trainServices[0],
+        destination: [{ locationName: "", crs: "WFJ" }]
+      }]
+    }, ROUTES["EUS-WFJ"].destination.crs);
+
+    expect(service.finalDestination).toBeNull();
+  });
+
   it("rejects a Darwin board filtered to a different destination", () => {
     expect(() => normalizeDarwin(
       { ...reverseDarwinFixture, filtercrs: "EUS" },

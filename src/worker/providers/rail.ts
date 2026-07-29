@@ -23,6 +23,28 @@ function isTime(value: string | null): value is string {
   return value !== null && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
+function finalDestinationFrom(
+  value: unknown
+): Departure["finalDestination"] {
+  if (!Array.isArray(value)) return null;
+
+  for (const location of value) {
+    if (typeof location !== "object" || location === null) continue;
+    const record = location as Record<string, unknown>;
+    const name = stringValue(record.locationName);
+    const crs = stringValue(record.crs);
+    if (
+      name !== null &&
+      name.trim().length > 0 &&
+      crs !== null &&
+      crs.trim().length > 0
+    ) {
+      return { name, crs };
+    }
+  }
+  return null;
+}
+
 function statusFor(service: DarwinService, expectedDisplay: string | null): TrainStatus {
   if (service.isCancelled === true) return "cancelled";
   if (expectedDisplay === "On time") return "on_time";
@@ -53,6 +75,7 @@ function departureFrom(service: DarwinService, generatedAt: string): Departure {
     platform: stringValue(service.platform),
     operator: stringValue(service.operator) ?? malformedResponse(),
     operatorCode: stringValue(service.operatorCode) ?? malformedResponse(),
+    finalDestination: finalDestinationFrom(service.destination),
     coachCount: null,
     status,
     isCancelled: status === "cancelled",

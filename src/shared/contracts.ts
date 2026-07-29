@@ -10,6 +10,10 @@ export interface Departure {
   platform: string | null;
   operator: string;
   operatorCode: string;
+  finalDestination: {
+    name: string;
+    crs: string;
+  } | null;
   coachCount: number | null;
   status: TrainStatus;
   isCancelled: boolean;
