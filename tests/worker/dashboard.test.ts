@@ -106,7 +106,7 @@ describe("dashboard service", () => {
 
   it("normalizes a cached weather value created before rain chance was added", async () => {
     const cache = new MemoryCacheStore();
-    cache.seed("weather", {
+    cache.seed("weather-v2", {
       temperatureC: 21.4,
       apparentTemperatureC: 20.8,
       relativeHumidityPercent: 63,
@@ -135,7 +135,7 @@ describe("dashboard service", () => {
 
   it("normalizes a cached weather value created before today temperatures were added", async () => {
     const cache = new MemoryCacheStore();
-    cache.seed("weather", {
+    cache.seed("weather-v2", {
       temperatureC: 21.4,
       apparentTemperatureC: 20.8,
       relativeHumidityPercent: 63,

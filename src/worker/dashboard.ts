@@ -102,7 +102,7 @@ export function createDashboardService(deps: {
       }),
       loadWithFallback({
         cache: deps.cache,
-        key: "weather",
+        key: "weather-v2",
         now,
         freshForMs: 10 * 60_000,
         staleForMs: 30 * 60_000,
