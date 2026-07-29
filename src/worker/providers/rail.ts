@@ -23,13 +23,6 @@ function isTime(value: string | null): value is string {
   return value !== null && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
-function hasDestination(destination: unknown, destinationCrs: string): boolean {
-  return Array.isArray(destination) && destination.some(
-    (location) => typeof location === "object" && location !== null &&
-      (location as Record<string, unknown>).crs === destinationCrs
-  );
-}
-
 function statusFor(service: DarwinService, expectedDisplay: string | null): TrainStatus {
   if (service.isCancelled === true) return "cancelled";
   if (expectedDisplay === "On time") return "on_time";
@@ -84,6 +77,7 @@ export function normalizeDarwin(
   if (
     !generatedAt ||
     !isIsoTimestamp(generatedAt) ||
+    stringValue(board.filtercrs) !== destinationCrs ||
     !Array.isArray(board.trainServices)
   ) {
     malformedResponse();
@@ -91,7 +85,6 @@ export function normalizeDarwin(
 
   return board.trainServices
     .filter((service): service is DarwinService => typeof service === "object" && service !== null)
-    .filter(({ destination }) => hasDestination(destination, destinationCrs))
     .map((service) => departureFrom(service, generatedAt))
     .sort((first, second) => first.scheduledDeparture.localeCompare(second.scheduledDeparture));
 }

@@ -68,11 +68,6 @@ export const darwinFixture = {
       serviceIdPercentEncoded: "unknown",
       std: "12:25",
       etd: "Delayed"
-    }),
-    service({
-      serviceID: "other-destination",
-      serviceIdPercentEncoded: "other-destination",
-      destination: [destination("WAT", "Watford")]
     })
   ],
   busServices: null,
@@ -108,8 +103,8 @@ export const reverseDarwinFixture = {
       operatorCode: "LO"
     }),
     service({
-      serviceID: "reverse-other",
-      serviceIdPercentEncoded: "reverse-other",
+      serviceID: "reverse-through",
+      serviceIdPercentEncoded: "reverse-through",
       origin: [destination("EUS", "London Euston")],
       destination: [destination("BHM", "Birmingham New Street")],
       std: "12:30"

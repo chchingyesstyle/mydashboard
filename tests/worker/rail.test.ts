@@ -62,8 +62,16 @@ describe("Darwin rail provider", () => {
 
     expect(services.map(({ id, operatorCode }) => [id, operatorCode])).toEqual([
       ["reverse-lnr", "LM"],
-      ["reverse-overground", "LO"]
+      ["reverse-overground", "LO"],
+      ["reverse-through", "LM"]
     ]);
+  });
+
+  it("rejects a Darwin board filtered to a different destination", () => {
+    expect(() => normalizeDarwin(
+      { ...reverseDarwinFixture, filtercrs: "EUS" },
+      ROUTES["EUS-WFJ"].destination.crs
+    )).toThrow("Darwin departures response was malformed");
   });
 
   it.each([
