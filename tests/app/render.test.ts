@@ -199,6 +199,20 @@ describe("dashboard rendering", () => {
     expect(within(weather).queryByText("undefined%")).toBeNull();
   });
 
+  it("treats missing today temperatures from an older payload as unavailable", () => {
+    const weather = getByRole(render({
+      ...livePayload,
+      weather: {
+        ...livePayload.weather,
+        temperatureMinTodayC: undefined,
+        temperatureMaxTodayC: undefined
+      } as unknown as DashboardPayload["weather"]
+    }), "region", { name: "Current weather" });
+
+    expect(within(weather).getByText("Today temperatures unavailable")).toBeTruthy();
+    expect(within(weather).queryByText("Min undefined°C · Max undefined°C")).toBeNull();
+  });
+
   it("labels stale panels and exposes their data age", () => {
     const root = render({
       ...livePayload,

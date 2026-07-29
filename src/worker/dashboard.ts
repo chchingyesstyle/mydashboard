@@ -64,6 +64,8 @@ function weatherPanel(
     updatedAt: result.value.updatedAt,
     stale: result.value.stale,
     ...result.value.value,
+    temperatureMinTodayC: result.value.value.temperatureMinTodayC ?? null,
+    temperatureMaxTodayC: result.value.value.temperatureMaxTodayC ?? null,
     rainChanceNext6HoursPercent:
       result.value.value.rainChanceNext6HoursPercent ?? null,
     error: null

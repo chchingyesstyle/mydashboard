@@ -133,6 +133,38 @@ describe("dashboard service", () => {
     });
   });
 
+  it("normalizes a cached weather value created before today temperatures were added", async () => {
+    const cache = new MemoryCacheStore();
+    cache.seed("weather", {
+      temperatureC: 21.4,
+      apparentTemperatureC: 20.8,
+      relativeHumidityPercent: 63,
+      precipitationMm: 0,
+      rainChanceNext6HoursPercent: 60,
+      weatherCode: 2,
+      condition: "Partly cloudy",
+      windSpeedKph: 12.1,
+      windDirectionDegrees: 240,
+      pressureMslHpa: 1016.4
+    }, NOW.toISOString());
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache,
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard();
+
+    expect(dashboard.weather).toMatchObject({
+      status: "live",
+      temperatureMinTodayC: null,
+      temperatureMaxTodayC: null
+    });
+    expect(Object.hasOwn(dashboard.weather, "temperatureMinTodayC")).toBe(true);
+    expect(Object.hasOwn(dashboard.weather, "temperatureMaxTodayC")).toBe(true);
+  });
+
   it("returns stale departures and a partial dashboard when rail refresh fails", async () => {
     const cache = new MemoryCacheStore();
     const cachedServices = normalizeDarwin(darwinFixture);

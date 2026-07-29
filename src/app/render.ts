@@ -324,7 +324,7 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
           `${panel.rainChanceNext6HoursPercent}%`,
           `${panel.rainChanceNext6HoursPercent} percent`
         ),
-    panel.temperatureMinTodayC === null || panel.temperatureMaxTodayC === null
+    panel.temperatureMinTodayC == null || panel.temperatureMaxTodayC == null
       ? weatherValue("Today", "Unavailable", "Today temperatures unavailable")
       : weatherValue(
           "Today",
