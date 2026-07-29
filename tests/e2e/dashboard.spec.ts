@@ -213,9 +213,8 @@ test("shows a strong keyboard focus indicator on refresh", async ({ page }) => {
   await openDashboard(page);
 
   await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("button", { name: "Switch to dark mode" })
-  ).toBeFocused();
+  const theme = page.getByRole("button", { name: "Switch to dark mode" });
+  await expect(theme).toBeFocused();
   await page.keyboard.press("Tab");
   const refresh = page.getByRole("button", { name: "Refresh dashboard" });
   await expect(refresh).toBeFocused();
