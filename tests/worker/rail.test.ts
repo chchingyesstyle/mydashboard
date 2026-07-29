@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
+import { ROUTES } from "../../src/shared/contracts";
 import { fetchDepartures, normalizeDarwin } from "../../src/worker/providers/rail";
-import { darwinFixture } from "../fixtures/darwin";
+import { darwinFixture, reverseDarwinFixture } from "../fixtures/darwin";
 
 describe("Darwin rail provider", () => {
   it("normalizes direct Euston departures from every operator", () => {
-    const services = normalizeDarwin(darwinFixture);
+    const services = normalizeDarwin(
+      darwinFixture,
+      ROUTES["WFJ-EUS"].destination.crs
+    );
 
     expect(services.map(({ operatorCode }) => operatorCode)).toEqual([
       "LO", "LM", "LM", "LM", "LM"
@@ -28,7 +32,7 @@ describe("Darwin rail provider", () => {
         std: "23:55",
         etd: "00:20"
       }]
-    });
+    }, ROUTES["WFJ-EUS"].destination.crs);
 
     expect(service.scheduledDeparture).toBe("2026-07-28T23:55:00+01:00");
     expect(service.expectedDeparture).toBe("2026-07-29T00:20:00+01:00");
@@ -38,39 +42,61 @@ describe("Darwin rail provider", () => {
     expect(() => normalizeDarwin({
       ...darwinFixture,
       generatedAt: "28 July 2026 12:00"
-    })).toThrow("Darwin departures response was malformed");
+    }, ROUTES["WFJ-EUS"].destination.crs)).toThrow(
+      "Darwin departures response was malformed"
+    );
   });
 
   it("accepts Darwin timestamps with an explicit offset and extended precision", () => {
     expect(normalizeDarwin({
       ...darwinFixture,
       generatedAt: "2026-07-28T17:07:38.8418107+01:00"
-    })).toHaveLength(5);
+    }, ROUTES["WFJ-EUS"].destination.crs)).toHaveLength(5);
   });
 
-  it("requests every direct Watford to Euston departure through RDM", async () => {
+  it("normalizes every direct Euston to Watford service", () => {
+    const services = normalizeDarwin(
+      reverseDarwinFixture,
+      ROUTES["EUS-WFJ"].destination.crs
+    );
+
+    expect(services.map(({ id, operatorCode }) => [id, operatorCode])).toEqual([
+      ["reverse-lnr", "LM"],
+      ["reverse-overground", "LO"]
+    ]);
+  });
+
+  it.each([
+    ["WFJ-EUS", "WFJ", "EUS"],
+    ["EUS-WFJ", "EUS", "WFJ"]
+  ] as const)("requests the selected %s Darwin board", async (
+    routeId,
+    origin,
+    destination
+  ) => {
     let request: Request | undefined;
     const fetcher = (async (
       input: string | URL | Request,
       init?: RequestInit
     ) => {
       request = new Request(input, init);
-      return new Response(JSON.stringify(darwinFixture));
+      return new Response(JSON.stringify(
+        routeId === "WFJ-EUS" ? darwinFixture : reverseDarwinFixture
+      ));
     }) as typeof fetch;
 
     await fetchDepartures(
       fetcher,
       new Date("2026-07-28T11:55:00.000Z"),
-      "consumer-key"
+      "consumer-key",
+      ROUTES[routeId]
     );
 
     const url = new URL(request!.url);
-    expect(url.origin + url.pathname).toBe(
-      "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard/WFJ"
-    );
+    expect(url.pathname.endsWith(`/GetDepartureBoard/${origin}`)).toBe(true);
     expect(Object.fromEntries(url.searchParams)).toEqual({
       numRows: "150",
-      filterCrs: "EUS",
+      filterCrs: destination,
       filterType: "to",
       timeOffset: "0",
       timeWindow: "120"
@@ -82,7 +108,12 @@ describe("Darwin rail provider", () => {
   it("does not call Darwin without a configured API key", async () => {
     const fetcher = vi.fn<typeof fetch>();
 
-    await expect(fetchDepartures(fetcher, new Date(), "")).rejects.toThrow(
+    await expect(fetchDepartures(
+      fetcher,
+      new Date(),
+      "",
+      ROUTES["WFJ-EUS"]
+    )).rejects.toThrow(
       "Darwin API key is not configured"
     );
     expect(fetcher).not.toHaveBeenCalled();
@@ -91,17 +122,23 @@ describe("Darwin rail provider", () => {
   it("throws a provider-specific error for a failed response", async () => {
     const fetcher = (async () => new Response("upstream error", { status: 503 })) as typeof fetch;
 
-    await expect(fetchDepartures(fetcher, new Date(), "consumer-key")).rejects.toThrow(
-      "Darwin departures request failed"
-    );
+    await expect(fetchDepartures(
+      fetcher,
+      new Date(),
+      "consumer-key",
+      ROUTES["WFJ-EUS"]
+    )).rejects.toThrow("Darwin departures request failed");
   });
 
   it("throws a provider-specific error for malformed responses", async () => {
     const fetcher = (async () => new Response(JSON.stringify({ generatedAt: "invalid" }))) as typeof fetch;
 
-    await expect(fetchDepartures(fetcher, new Date(), "consumer-key")).rejects.toThrow(
-      "Darwin departures response was malformed"
-    );
+    await expect(fetchDepartures(
+      fetcher,
+      new Date(),
+      "consumer-key",
+      ROUTES["WFJ-EUS"]
+    )).rejects.toThrow("Darwin departures response was malformed");
   });
 
   it("aborts the Darwin request after seven seconds", async () => {
@@ -115,7 +152,12 @@ describe("Darwin rail provider", () => {
       });
     })) as typeof fetch;
 
-    const departures = fetchDepartures(fetcher, new Date(), "consumer-key");
+    const departures = fetchDepartures(
+      fetcher,
+      new Date(),
+      "consumer-key",
+      ROUTES["WFJ-EUS"]
+    );
     controller.abort();
 
     await expect(departures).rejects.toThrow("The operation was aborted");

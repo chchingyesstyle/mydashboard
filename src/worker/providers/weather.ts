@@ -1,4 +1,5 @@
-import type { WeatherPanel } from "../../shared/contracts";
+import { DEFAULT_ROUTE } from "../../shared/contracts";
+import type { RouteConfig, WeatherPanel } from "../../shared/contracts";
 
 export type WeatherValue = {
   [Key in
@@ -176,12 +177,13 @@ export function normalizeWeather(payload: unknown): WeatherValue {
 
 export async function fetchWeather(
   fetcher: typeof fetch,
-  now: Date
+  now: Date,
+  route: RouteConfig = DEFAULT_ROUTE
 ): Promise<WeatherValue> {
   void now;
   const url = new URL(OPEN_METEO_URL);
-  url.searchParams.set("latitude", "51.6635");
-  url.searchParams.set("longitude", "-0.3969");
+  url.searchParams.set("latitude", String(route.weather.latitude));
+  url.searchParams.set("longitude", String(route.weather.longitude));
   url.searchParams.set("timezone", "Europe/London");
   url.searchParams.set("temperature_unit", "celsius");
   url.searchParams.set("wind_speed_unit", "kmh");

@@ -1,9 +1,13 @@
-import type { Departure, TrainStatus } from "../../shared/contracts";
-import { ROUTE } from "../../shared/contracts";
+import type {
+  Departure,
+  RouteConfig,
+  TrainStatus
+} from "../../shared/contracts";
+import { DEFAULT_ROUTE } from "../../shared/contracts";
 import { resolveLondonDeparture } from "../time";
 
-const DARWIN_DEPARTURES_URL =
-  "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard/WFJ";
+const DARWIN_DEPARTURES_BASE_URL =
+  "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard";
 
 type DarwinService = Record<string, unknown>;
 
@@ -19,10 +23,10 @@ function isTime(value: string | null): value is string {
   return value !== null && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
-function hasEustonDestination(destination: unknown): boolean {
+function hasDestination(destination: unknown, destinationCrs: string): boolean {
   return Array.isArray(destination) && destination.some(
     (location) => typeof location === "object" && location !== null &&
-      (location as Record<string, unknown>).crs === ROUTE.destination.crs
+      (location as Record<string, unknown>).crs === destinationCrs
   );
 }
 
@@ -69,7 +73,10 @@ function isIsoTimestamp(value: string): boolean {
     !Number.isNaN(Date.parse(value));
 }
 
-export function normalizeDarwin(response: unknown): Departure[] {
+export function normalizeDarwin(
+  response: unknown,
+  destinationCrs: string = DEFAULT_ROUTE.destination.crs
+): Departure[] {
   if (typeof response !== "object" || response === null) malformedResponse();
 
   const board = response as Record<string, unknown>;
@@ -84,7 +91,7 @@ export function normalizeDarwin(response: unknown): Departure[] {
 
   return board.trainServices
     .filter((service): service is DarwinService => typeof service === "object" && service !== null)
-    .filter(({ destination }) => hasEustonDestination(destination))
+    .filter(({ destination }) => hasDestination(destination, destinationCrs))
     .map((service) => departureFrom(service, generatedAt))
     .sort((first, second) => first.scheduledDeparture.localeCompare(second.scheduledDeparture));
 }
@@ -92,17 +99,20 @@ export function normalizeDarwin(response: unknown): Departure[] {
 export async function fetchDepartures(
   fetcher: typeof fetch,
   now: Date,
-  apiKey: string
+  apiKey: string,
+  route: RouteConfig = DEFAULT_ROUTE
 ): Promise<Departure[]> {
   void now;
   if (apiKey.length === 0) {
     throw new Error("Darwin API key is not configured");
   }
 
-  const url = new URL(DARWIN_DEPARTURES_URL);
+  const url = new URL(
+    `${DARWIN_DEPARTURES_BASE_URL}/${encodeURIComponent(route.origin.crs)}`
+  );
   url.search = new URLSearchParams({
     numRows: "150",
-    filterCrs: ROUTE.destination.crs,
+    filterCrs: route.destination.crs,
     filterType: "to",
     timeOffset: "0",
     timeWindow: "120"
@@ -118,7 +128,7 @@ export async function fetchDepartures(
   }
 
   try {
-    return normalizeDarwin(await response.json());
+    return normalizeDarwin(await response.json(), route.destination.crs);
   } catch (error) {
     if (
       error instanceof Error &&

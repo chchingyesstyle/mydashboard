@@ -55,7 +55,27 @@ export interface DashboardPayload {
   weather: WeatherPanel;
 }
 
-export const ROUTE = {
-  origin: { name: "Watford Junction", crs: "WFJ" },
-  destination: { name: "London Euston", crs: "EUS" }
+export const ROUTES = {
+  "WFJ-EUS": {
+    id: "WFJ-EUS",
+    origin: { name: "Watford Junction", crs: "WFJ" },
+    destination: { name: "London Euston", crs: "EUS" },
+    weather: { latitude: 51.6635, longitude: -0.3969 }
+  },
+  "EUS-WFJ": {
+    id: "EUS-WFJ",
+    origin: { name: "London Euston", crs: "EUS" },
+    destination: { name: "Watford Junction", crs: "WFJ" },
+    weather: { latitude: 51.5284, longitude: -0.1346 }
+  }
 } as const;
+
+export type RouteId = keyof typeof ROUTES;
+export type RouteConfig = (typeof ROUTES)[RouteId];
+export const DEFAULT_ROUTE_ID: RouteId = "WFJ-EUS";
+export const DEFAULT_ROUTE: RouteConfig = ROUTES[DEFAULT_ROUTE_ID];
+export const ROUTE = DEFAULT_ROUTE;
+
+export function isRouteId(value: string): value is RouteId {
+  return Object.hasOwn(ROUTES, value);
+}

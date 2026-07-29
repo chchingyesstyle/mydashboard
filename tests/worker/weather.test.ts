@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ROUTES } from "../../src/shared/contracts";
 import { fetchWeather, normalizeWeather } from "../../src/worker/providers/weather";
 import { openMeteoFixture } from "../fixtures/open-meteo";
 
@@ -111,19 +112,30 @@ describe("Open-Meteo weather provider", () => {
     });
   });
 
-  it("requests current weather and the next six rain probabilities for Watford Junction", async () => {
+  it.each([
+    ["WFJ-EUS", "51.6635", "-0.3969"],
+    ["EUS-WFJ", "51.5284", "-0.1346"]
+  ] as const)("requests weather for the %s origin", async (
+    routeId,
+    latitude,
+    longitude
+  ) => {
     let requestedUrl = "";
     const fetcher = (async (input: string | URL | Request) => {
       requestedUrl = input.toString();
       return new Response(JSON.stringify(openMeteoFixture));
     }) as typeof fetch;
 
-    await fetchWeather(fetcher, new Date("2026-07-28T11:55:00.000Z"));
+    await fetchWeather(
+      fetcher,
+      new Date("2026-07-28T11:55:00.000Z"),
+      ROUTES[routeId]
+    );
 
     const url = new URL(requestedUrl);
     expect(url.origin + url.pathname).toBe("https://api.open-meteo.com/v1/forecast");
-    expect(url.searchParams.get("latitude")).toBe("51.6635");
-    expect(url.searchParams.get("longitude")).toBe("-0.3969");
+    expect(url.searchParams.get("latitude")).toBe(latitude);
+    expect(url.searchParams.get("longitude")).toBe(longitude);
     expect(url.searchParams.get("timezone")).toBe("Europe/London");
     expect(url.searchParams.get("temperature_unit")).toBe("celsius");
     expect(url.searchParams.get("wind_speed_unit")).toBe("kmh");
@@ -141,7 +153,11 @@ describe("Open-Meteo weather provider", () => {
   it("throws a provider-specific error for a failed response", async () => {
     const fetcher = (async () => new Response("upstream error", { status: 503 })) as typeof fetch;
 
-    await expect(fetchWeather(fetcher, new Date())).rejects.toThrow(
+    await expect(fetchWeather(
+      fetcher,
+      new Date(),
+      ROUTES["WFJ-EUS"]
+    )).rejects.toThrow(
       "Open-Meteo current weather request failed"
     );
   });
@@ -157,7 +173,7 @@ describe("Open-Meteo weather provider", () => {
       });
     })) as typeof fetch;
 
-    const weather = fetchWeather(fetcher, new Date());
+    const weather = fetchWeather(fetcher, new Date(), ROUTES["WFJ-EUS"]);
     controller.abort();
 
     await expect(weather).rejects.toThrow("The operation was aborted");

@@ -87,3 +87,36 @@ export const darwinFixture = {
   platformAvailable: true,
   areServicesAvailable: true
 };
+
+export const reverseDarwinFixture = {
+  ...darwinFixture,
+  trainServices: [
+    service({
+      serviceID: "reverse-lnr",
+      serviceIdPercentEncoded: "reverse-lnr",
+      origin: [destination("EUS", "London Euston")],
+      destination: [destination("WFJ", "Watford Junction")],
+      std: "12:10"
+    }),
+    service({
+      serviceID: "reverse-overground",
+      serviceIdPercentEncoded: "reverse-overground",
+      origin: [destination("EUS", "London Euston")],
+      destination: [destination("WFJ", "Watford Junction")],
+      std: "12:20",
+      operator: "London Overground",
+      operatorCode: "LO"
+    }),
+    service({
+      serviceID: "reverse-other",
+      serviceIdPercentEncoded: "reverse-other",
+      origin: [destination("EUS", "London Euston")],
+      destination: [destination("BHM", "Birmingham New Street")],
+      std: "12:30"
+    })
+  ],
+  locationName: "London Euston",
+  crs: "EUS",
+  filterLocationName: "Watford Junction",
+  filtercrs: "WFJ"
+};
