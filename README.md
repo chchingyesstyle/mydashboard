@@ -1,16 +1,19 @@
-# Watford Junction to London Euston dashboard
+# Watford Junction–London Euston dashboard
 
-Public live dashboard for direct trains from Watford Junction (`WFJ`) to
-London Euston (`EUS`) and current weather at Watford Junction:
+Public live dashboard for direct trains in both directions between Watford
+Junction (`WFJ`) and London Euston (`EUS`), with weather at the selected
+departure station:
 
 <https://dashboard.cchk.uk>
 
 The dashboard includes every direct operator returned by the rail provider,
-including London Overground. It shows current weather only; there are no hourly
-or daily forecasts. On landscape and tablet screens, departures and weather
-appear side by side; on phones, current weather moves above departures and the
-layout does not require horizontal scrolling. Refresh and fullscreen controls
-remain available at each size.
+including London Overground. Use **To Euston** or **To Watford** in the header
+to change direction. A reload always returns to Watford-to-Euston; the separate
+light/dark theme preference remains saved. Weather includes current conditions,
+today's minimum and maximum temperatures, next-six-hour rain chance, and mean
+sea-level pressure for the departure station. On landscape and tablet screens,
+departures and weather appear side by side; on phones, weather moves above
+departures without horizontal scrolling.
 
 ## Local development
 
@@ -46,13 +49,14 @@ npx playwright install chromium
 
 - Rail departures come from the subscribed
   [National Rail Darwin Live Departure Board](https://www.nationalrail.co.uk/developers/darwin-data-feeds/)
-  JSON API. The Worker requests every direct `WFJ` to `EUS` departure in the
-  next 120 minutes and keeps provider-specific fields inside
-  `src/worker/providers/rail.ts`.
-- Current conditions come from
-  [Open-Meteo](https://open-meteo.com/). The request uses fixed Watford
-  Junction coordinates, includes current mean sea-level pressure, and does not
-  request a forecast series.
+  JSON API. The Worker requests every direct departure in the selected
+  direction for the next 120 minutes and keeps provider-specific fields inside
+  `src/worker/providers/rail.ts`. Darwin refreshes at most every 30 seconds per
+  route.
+- Available coach counts come from Realtime Trains and are cached for five
+  minutes per route. RTT failures never remove Darwin departures.
+- Weather comes from [Open-Meteo](https://open-meteo.com/). The request uses
+  fixed coordinates for the selected origin and is cached for 10 minutes.
 
 Rail data is provided by National Rail. Weather data is provided by Open-Meteo.
 The same attribution appears in the dashboard footer.
@@ -63,7 +67,12 @@ The browser and future device clients use:
 
 ```text
 GET https://dashboard.cchk.uk/api/v1/dashboard
+GET https://dashboard.cchk.uk/api/v1/dashboard?route=WFJ-EUS
+GET https://dashboard.cchk.uk/api/v1/dashboard?route=EUS-WFJ
 ```
+
+The request without a `route` query defaults to `WFJ-EUS`. Empty, repeated, or
+unsupported route values return `400 Bad Request`.
 
 The versioned response has stable, provider-neutral fields, ISO 8601
 timestamps, compact status enums, CORS support, and independent `departures`
@@ -102,10 +111,19 @@ encrypted Worker secret:
 npx wrangler secret put DARWIN_API_KEY
 ```
 
-Enter only the Consumer key at Wrangler's prompt. The Worker sends it to the
+Enter only the Consumer key at Wrangler's prompt. Store the Realtime Trains
+refresh token separately:
+
+```bash
+npx wrangler secret put RTT_API_TOKEN
+```
+
+The Worker sends the Darwin key to the
 subscribed gateway only in the `x-apikey` header. Do not put the key in
 `wrangler.jsonc`, browser code, the public API response, logs, or Git. The
-separate Darwin Consumer secret is not used.
+separate Darwin Consumer secret is not used. The Worker exchanges
+`RTT_API_TOKEN` for a short-lived access token and never exposes either RTT
+token publicly.
 
 Then deploy:
 
@@ -114,8 +132,9 @@ npm run deploy
 ```
 
 Wrangler builds the saved source and deploys the Worker named
-`watford-euston-dashboard` to the configured custom domain. Verify both the page
-and `/api/v1/dashboard` after every deployment.
+`watford-euston-dashboard` to the configured custom domain. Verify the page,
+both route variants, and the default `/api/v1/dashboard` after every
+deployment.
 
 Run the checked production API smoke after deployment:
 

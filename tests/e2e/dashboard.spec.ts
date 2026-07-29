@@ -89,11 +89,35 @@ const liveDashboard: DashboardPayload = {
   }
 };
 
+const reverseDashboard: DashboardPayload = {
+  ...liveDashboard,
+  route: {
+    origin: { name: "London Euston", crs: "EUS" },
+    destination: { name: "Watford Junction", crs: "WFJ" }
+  },
+  departures: {
+    ...liveDashboard.departures,
+    services: liveDashboard.departures.services.map((service) => ({
+      ...service,
+      id: `reverse-${service.id}`
+    }))
+  },
+  weather: {
+    ...liveDashboard.weather,
+    temperatureC: 22.1,
+    condition: "Clear sky",
+    weatherCode: 0
+  }
+};
+
 async function openDashboard(page: Page): Promise<void> {
-  await page.route("**/api/v1/dashboard", async (route) => {
+  await page.route("**/api/v1/dashboard**", async (route) => {
+    const routeId = new URL(route.request().url()).searchParams.get("route");
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify(liveDashboard)
+      body: JSON.stringify(
+        routeId === "EUS-WFJ" ? reverseDashboard : liveDashboard
+      )
     });
   });
   await page.goto("/");
@@ -113,6 +137,8 @@ test("places departures and weather side by side in landscape", async ({
   expect(weather).not.toBeNull();
   expect(Math.abs(departures!.y - weather!.y)).toBeLessThanOrEqual(2);
   expect(weather!.x).toBeGreaterThan(departures!.x + departures!.width);
+  await expect(page.getByRole("button", { name: "To Euston" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "To Watford" })).toBeVisible();
 });
 
 test("keeps departure content out of the weather panel at 800px", async ({
@@ -153,6 +179,31 @@ test("places weather above departures without horizontal overflow on a phone", a
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 });
 
+test("switches route content without phone overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openDashboard(page);
+
+  await page.getByRole("button", { name: "To Watford" }).click();
+
+  await expect(page.getByRole("heading", {
+    name: "London Euston to Watford Junction"
+  })).toBeVisible();
+  await expect(page.getByRole("button", {
+    name: "To Watford"
+  })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("listitem").filter({
+    hasText: "London Overground"
+  })).toBeVisible();
+  await expect(page.getByRole("region", {
+    name: "Current weather"
+  })).toContainText("22.1°C");
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth
+  }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+});
+
 test("uses compact departure rows on a large screen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openDashboard(page);
@@ -188,6 +239,12 @@ test("uses compact departure rows without phone overflow", async ({ page }) => {
 test("exposes accessible names for dashboard controls", async ({ page }) => {
   await openDashboard(page);
 
+  const toEuston = page.getByRole("button", { name: "To Euston" });
+  const toWatford = page.getByRole("button", { name: "To Watford" });
+  await expect(toEuston).toBeVisible();
+  await expect(toWatford).toBeVisible();
+  expect((await toEuston.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await toWatford.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect(
     page.getByRole("button", { name: "Switch to dark mode" })
   ).toBeVisible();
@@ -213,9 +270,34 @@ test("defaults to light and remembers a selected dark theme", async ({ page }) =
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
-test("shows a strong keyboard focus indicator on refresh", async ({ page }) => {
+test("reload resets the route while preserving the selected theme", async ({
+  page
+}) => {
+  await openDashboard(page);
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.getByRole("button", { name: "To Watford" }).click();
+  await expect(page.getByRole("heading", {
+    name: "London Euston to Watford Junction"
+  })).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.getByRole("heading", {
+    name: "Watford Junction to London Euston"
+  })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
+test("shows a strong keyboard focus indicator through the header controls", async ({
+  page
+}) => {
   await openDashboard(page);
 
+  await page.keyboard.press("Tab");
+  const toEuston = page.getByRole("button", { name: "To Euston" });
+  await expect(toEuston).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "To Watford" })).toBeFocused();
   await page.keyboard.press("Tab");
   const theme = page.getByRole("button", { name: "Switch to dark mode" });
   await expect(theme).toBeFocused();
@@ -260,6 +342,7 @@ test("disables control transitions when reduced motion is requested", async ({
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await openDashboard(page);
   const refresh = page.getByRole("button", { name: "Refresh dashboard" });
+  const routeControl = page.getByRole("button", { name: "To Watford" });
 
   const normalMotion = await refresh.evaluate((control) => {
     const style = getComputedStyle(control);
@@ -270,11 +353,21 @@ test("disables control transitions when reduced motion is requested", async ({
   });
   expect(normalMotion.property).toBe("opacity, transform");
   expect(normalMotion.duration).not.toBe("0s");
+  expect(await routeControl.evaluate((control) =>
+    getComputedStyle(control).transitionDuration
+  )).not.toBe("0s");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect
     .poll(async () =>
       refresh.evaluate((control) => getComputedStyle(control).transitionDuration)
+    )
+    .toBe("0s");
+  await expect
+    .poll(async () =>
+      routeControl.evaluate((control) =>
+        getComputedStyle(control).transitionDuration
+      )
     )
     .toBe("0s");
 });

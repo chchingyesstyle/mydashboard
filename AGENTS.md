@@ -5,15 +5,21 @@ These instructions apply to the entire repository.
 ## Product Scope
 
 - Build and maintain the public dashboard at `https://dashboard.cchk.uk`.
-- Show every direct train from Watford Junction (`WFJ`) to London Euston (`EUS`), including London Overground.
-- Show current weather conditions at Watford Junction only. Do not add hourly or daily forecasts unless requested.
+- Show every direct train in both directions between Watford Junction (`WFJ`)
+  and London Euston (`EUS`), including London Overground.
+- Show weather for the selected departure station: Watford Junction for
+  `WFJ-EUS` and London Euston for `EUS-WFJ`. Keep forecasts limited to the
+  approved current conditions, today's minimum and maximum temperatures, and
+  next-six-hour rain chance.
 - Keep the public `/api/v1/dashboard` response suitable for both the web frontend and a future Seeed Studio reTerminal E1001 ESP32 client.
 - Treat `docs/superpowers/specs/2026-07-28-watford-euston-dashboard-design.md`
   as the base product specification and
   `docs/superpowers/specs/2026-07-28-darwin-pressure-accessibility-design.md`
   as its current data and accessibility extension. Treat
   `docs/superpowers/specs/2026-07-28-pressure-two-decimal-design.md` as the
-  current pressure-presentation requirement.
+  current pressure-presentation requirement. Treat
+  `docs/superpowers/specs/2026-07-29-bidirectional-route-switch-design.md` as
+  the current route and origin-weather extension.
 
 ## Architecture and Data
 
@@ -22,7 +28,12 @@ These instructions apply to the entire repository.
 - Use the subscribed National Rail Darwin Live Departure Board JSON API for
   rail data and keep its Consumer key in the `DARWIN_API_KEY` Worker secret.
 - Use Open-Meteo for current weather conditions, including mean sea-level
-  pressure. Do not request forecast series.
+  pressure, today's minimum and maximum temperatures, and the next-six-hour
+  rain chance. Do not request additional forecast series.
+- Use Realtime Trains only to enrich Darwin departures with coach counts. Keep
+  its refresh token in the `RTT_API_TOKEN` Worker secret, cache coach counts
+  separately per route for five minutes, and reuse the Worker-only access
+  token until shortly before its `validUntil`.
 - Display mean sea-level pressure with exactly two decimal places in the web
   dashboard, for example `1016.80 hPa`, while keeping
   `weather.pressureMslHpa` numeric or `null` in the public API.
