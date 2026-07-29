@@ -1,5 +1,6 @@
 export const rttAccessTokenFixture = {
-  token: "access-token"
+  token: "access-token",
+  validUntil: "2026-07-30T13:00:00.000Z"
 };
 
 export const rttLocationFixture = {
@@ -36,6 +37,18 @@ export const rttDashboardLocationFixture = {
       },
       scheduleMetadata: { operator: { code: "LM" } },
       locationMetadata: { numberOfVehicles: 10 }
+    }
+  ]
+};
+
+export const rttReverseLocationFixture = {
+  services: [
+    {
+      temporalData: {
+        departure: { scheduleAdvertised: "2026-07-28T12:10:00" }
+      },
+      scheduleMetadata: { operator: { code: "LM" } },
+      locationMetadata: { numberOfVehicles: 8 }
     }
   ]
 };
