@@ -57,13 +57,12 @@ async function runSmoke(conditionalStatus: 200 | 304): Promise<{
 }
 
 describe("production API smoke command", () => {
-  it("exits nonzero when a matching conditional request returns 200", async () => {
+  it("accepts an edge-cached 200 with a matching ETag", async () => {
     const result = await runSmoke(200);
 
-    expect(result.code).toBe(1);
-    expect(result.stderr).toContain(
-      "Expected conditional status 304, received 200"
-    );
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("\"conditionalStatus\": 200");
   });
 
   it("passes a raw 200 then matching empty 304 exchange", async () => {

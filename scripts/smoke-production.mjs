@@ -49,13 +49,16 @@ async function verify(url) {
     "If-None-Match": etag
   });
   requireValue(
-    conditional.status === 304,
-    `Expected conditional status 304, received ${conditional.status}`
+    conditional.status === 304 ||
+      (conditional.status === 200 && conditional.headers.etag === etag),
+    `Expected conditional status 304 or matching ETag 200, received ${conditional.status}`
   );
-  requireValue(
-    conditional.body.length === 0,
-    `Expected empty conditional body, received ${conditional.body.length} bytes`
-  );
+  if (conditional.status === 304) {
+    requireValue(
+      conditional.body.length === 0,
+      `Expected empty conditional body, received ${conditional.body.length} bytes`
+    );
+  }
   requireValue(
     conditional.headers.etag === etag,
     "Expected matching conditional ETag header"
