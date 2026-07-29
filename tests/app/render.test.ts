@@ -25,7 +25,7 @@ const livePayload: DashboardPayload = {
         platform: "3",
         operator: "London Overground",
         operatorCode: "LO",
-        coachCount: null,
+        coachCount: 5,
         status: "on_time",
         isCancelled: false,
         reason: null
@@ -107,7 +107,7 @@ describe("dashboard rendering", () => {
       level: 1,
       name: "Watford Junction to London Euston"
     })).toBeTruthy();
-    expect(within(departures).getByText("London Overground")).toBeTruthy();
+    expect(within(departures).getByText("London Overground · 5 coaches")).toBeTruthy();
     expect(within(departures).getAllByText("LNR")).toHaveLength(2);
     expect(within(departures).getByText("12:12")).toBeTruthy();
     expect(within(departures).getByText("On time")).toBeTruthy();
@@ -117,6 +117,23 @@ describe("dashboard rendering", () => {
     expect(getByRole(root, "button", {
       name: "Switch to dark mode"
     })).toBeTruthy();
+  });
+
+  it("uses singular grammar and omits unavailable coach counts", () => {
+    const departures = getByRole(render({
+      ...livePayload,
+      departures: {
+        ...livePayload.departures,
+        services: [
+          { ...livePayload.departures.services[0], coachCount: 1 },
+          { ...livePayload.departures.services[1], coachCount: null }
+        ]
+      }
+    }), "region", { name: "Departures" });
+
+    expect(within(departures).getByText("London Overground · 1 coach")).toBeTruthy();
+    expect(within(departures).getByText("LNR")).toBeTruthy();
+    expect(within(departures).queryByText(/LNR ·/)).toBeNull();
   });
 
   it("keeps a cancelled service and its disruption reason visible", () => {
@@ -430,7 +447,7 @@ describe("dashboard rendering", () => {
       "Current weather is temporarily unavailable."
     );
     expect(within(getByRole(root, "region", { name: "Departures" }))
-      .getByText("London Overground")).toBeTruthy();
+      .getByText(/London Overground/)).toBeTruthy();
   });
 
   it("treats provider text as text instead of markup", () => {
@@ -440,7 +457,8 @@ describe("dashboard rendering", () => {
         ...livePayload.departures,
         services: [{
           ...livePayload.departures.services[0],
-          operator: "<img src=x onerror=alert(1)>"
+          operator: "<img src=x onerror=alert(1)>",
+          coachCount: null
         }]
       }
     });

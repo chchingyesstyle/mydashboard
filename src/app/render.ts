@@ -229,9 +229,12 @@ function renderDeparture(service: Departure): HTMLLIElement {
   } else {
     platform.textContent = `Platform ${service.platform}`;
   }
+  const coachLabel = service.coachCount == null
+    ? ""
+    : ` · ${service.coachCount} ${service.coachCount === 1 ? "coach" : "coaches"}`;
   const operator = element("p", {
     className: "departure-operator",
-    text: service.operator
+    text: `${service.operator}${coachLabel}`
   });
 
   serviceDetails.appendChild(scheduled);
