@@ -36,6 +36,10 @@ async function etagFor(body: string): Promise<string> {
   return `"${hex}"`;
 }
 
+function etagMatches(ifNoneMatch: string | null, etag: string): boolean {
+  return ifNoneMatch === etag || ifNoneMatch === `W/${etag}`;
+}
+
 export function createWorker({ getDashboard, assets }: WorkerDependencies) {
   return {
     async fetch(request: Request): Promise<Response> {
@@ -67,7 +71,7 @@ export function createWorker({ getDashboard, assets }: WorkerDependencies) {
           etag
         };
 
-        if (request.headers.get("if-none-match") === etag) {
+        if (etagMatches(request.headers.get("if-none-match"), etag)) {
           return new Response(null, { status: 304, headers });
         }
 

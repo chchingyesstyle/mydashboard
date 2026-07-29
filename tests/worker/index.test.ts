@@ -85,6 +85,21 @@ describe("worker routing", () => {
     expect(await response.text()).toBe("");
   });
 
+  it("returns 304 when Cloudflare forwards a weak matching ETag", async () => {
+    const runningWorker = worker();
+    const first = await runningWorker.fetch(
+      new Request("https://dashboard.cchk.uk/api/v1/dashboard")
+    );
+    const response = await runningWorker.fetch(
+      new Request("https://dashboard.cchk.uk/api/v1/dashboard", {
+        headers: { "if-none-match": `W/${first.headers.get("etag")}` }
+      })
+    );
+
+    expect(response.status).toBe(304);
+    expect(await response.text()).toBe("");
+  });
+
   it("answers dashboard preflight requests with CORS headers", async () => {
     const response = await worker().fetch(
       new Request("https://dashboard.cchk.uk/api/v1/dashboard", {
