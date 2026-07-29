@@ -3,11 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1a1c1f" />
+    <meta name="theme-color" content="#f4f5f6" />
     <title>Watford Junction to London Euston</title>
   </head>
   <body>
     <main id="app"></main>
+    <script>
+      try {
+        if (localStorage.getItem("dashboard-theme") === "dark") {
+          document.documentElement.dataset.theme = "dark";
+        }
+      } catch {}
+    </script>
     <script type="module" src="/src/app/main.ts"></script>
   </body>
 </html>

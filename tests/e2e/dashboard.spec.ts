@@ -185,11 +185,28 @@ test("exposes accessible names for dashboard controls", async ({ page }) => {
   await openDashboard(page);
 
   await expect(
+    page.getByRole("button", { name: "Switch to dark mode" })
+  ).toBeVisible();
+  await expect(
     page.getByRole("button", { name: "Refresh dashboard" })
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Enter fullscreen" })
   ).toBeVisible();
+});
+
+test("defaults to light and remembers a selected dark theme", async ({ page }) => {
+  await openDashboard(page);
+
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByRole("button", {
+    name: "Switch to light mode"
+  })).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
 test("shows a strong keyboard focus indicator on refresh", async ({ page }) => {
