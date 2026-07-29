@@ -1,4 +1,4 @@
-import { DEFAULT_ROUTE, type RouteConfig } from "../../shared/contracts";
+import type { RouteConfig } from "../../shared/contracts";
 
 const RTT_BASE_URL = "https://data.rtt.io";
 const EXPIRY_MARGIN_MS = 30_000;
@@ -169,14 +169,4 @@ export function createRttClient(
       }
     }
   };
-}
-
-export function fetchCoachCounts(
-  fetcher: typeof fetch,
-  refreshToken: string
-): Promise<CoachCount[]> {
-  return createRttClient(fetcher, refreshToken).fetchCoachCounts(
-    DEFAULT_ROUTE,
-    new Date()
-  );
 }

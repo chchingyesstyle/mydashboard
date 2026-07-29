@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { ROUTES } from "../../src/shared/contracts";
 import { createDashboardService } from "../../src/worker/dashboard";
 import type { CacheStore } from "../../src/worker/provider-cache";
 import { normalizeDarwin } from "../../src/worker/providers/rail";
-import { darwinFixture } from "../fixtures/darwin";
+import { darwinFixture, reverseDarwinFixture } from "../fixtures/darwin";
 import { openMeteoFixture } from "../fixtures/open-meteo";
 import {
   rttAccessTokenFixture,
-  rttDashboardLocationFixture
+  rttDashboardLocationFixture,
+  rttReverseLocationFixture
 } from "../fixtures/rtt";
 
 class MemoryCacheStore implements CacheStore {
@@ -22,8 +24,14 @@ class MemoryCacheStore implements CacheStore {
 
   seed(key: string, value: unknown, updatedAt: string): void {
     this.responses.set(
-      `https://dashboard-cache.invalid/${key}`,
+      `https://dashboard-cache.invalid/${encodeURIComponent(key)}`,
       new Response(JSON.stringify({ value, updatedAt }))
+    );
+  }
+
+  keys(): string[] {
+    return [...this.responses.keys()].map((url) =>
+      decodeURIComponent(new URL(url).pathname.slice(1))
     );
   }
 }
@@ -38,7 +46,11 @@ function networkFetcher(options: {
     const url = input.toString();
     if (url.includes("api1.raildata.org.uk")) {
       return options.rail?.clone() ??
-        new Response(JSON.stringify(darwinFixture));
+        new Response(JSON.stringify(
+          new URL(url).pathname.endsWith("/EUS")
+            ? reverseDarwinFixture
+            : darwinFixture
+        ));
     }
     if (url.includes("api.open-meteo.com")) {
       return options.weather?.clone() ??
@@ -50,7 +62,11 @@ function networkFetcher(options: {
     }
     if (url.includes("data.rtt.io/rtt/location")) {
       return options.rttLocation?.clone() ??
-        new Response(JSON.stringify(rttDashboardLocationFixture));
+        new Response(JSON.stringify(
+          new URL(url).searchParams.get("code") === "gb-nr:EUS"
+            ? rttReverseLocationFixture
+            : rttDashboardLocationFixture
+        ));
     }
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
@@ -102,6 +118,92 @@ describe("dashboard service", () => {
       pressureMslHpa: 1016.4,
       error: null
     });
+  });
+
+  it.each([
+    ["WFJ-EUS", "WFJ", "EUS"],
+    ["EUS-WFJ", "EUS", "WFJ"]
+  ] as const)("returns the selected %s payload", async (
+    routeId,
+    origin,
+    destination
+  ) => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard(ROUTES[routeId]);
+
+    expect(dashboard.version).toBe(1);
+    expect(dashboard.route.origin.crs).toBe(origin);
+    expect(dashboard.route.destination.crs).toBe(destination);
+  });
+
+  it("keeps rail, weather, and coach caches separate by route", async () => {
+    const cache = new MemoryCacheStore();
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache,
+      now: () => NOW,
+      darwinApiKey: "consumer-key",
+      rttApiToken: "refresh-token"
+    });
+
+    await getDashboard(ROUTES["WFJ-EUS"]);
+    await getDashboard(ROUTES["EUS-WFJ"]);
+
+    expect(cache.keys()).toEqual(expect.arrayContaining([
+      "rail:WFJ-EUS",
+      "rail:EUS-WFJ",
+      "weather:WFJ",
+      "weather:EUS",
+      "rtt-coaches:WFJ-EUS",
+      "rtt-coaches:EUS-WFJ"
+    ]));
+  });
+
+  it("does not use a Watford rail fallback for an Euston request", async () => {
+    const cache = new MemoryCacheStore();
+    cache.seed(
+      "rail:WFJ-EUS",
+      normalizeDarwin(darwinFixture, ROUTES["WFJ-EUS"].destination.crs),
+      "2026-07-28T12:00:00.000Z"
+    );
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher({
+        rail: new Response("unavailable", { status: 503 })
+      }),
+      cache,
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard(ROUTES["EUS-WFJ"]);
+
+    expect(dashboard.departures.status).toBe("unavailable");
+    expect(dashboard.departures.services).toEqual([]);
+  });
+
+  it("adds reverse coach counts without changing direct services", async () => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key",
+      rttApiToken: "refresh-token"
+    });
+
+    const dashboard = await getDashboard(ROUTES["EUS-WFJ"]);
+
+    expect(dashboard.departures.services.find(
+      ({ id }) => id === "reverse-lnr"
+    )?.coachCount).toBe(8);
+    expect(dashboard.departures.services.some(
+      ({ operatorCode }) => operatorCode === "LO"
+    )).toBe(true);
   });
 
   it("adds RTT coach counts to matching Darwin departures only", async () => {
@@ -198,7 +300,7 @@ describe("dashboard service", () => {
 
   it("normalizes a cached weather value created before rain chance was added", async () => {
     const cache = new MemoryCacheStore();
-    cache.seed("weather-v2", {
+    cache.seed("weather:WFJ", {
       temperatureC: 21.4,
       apparentTemperatureC: 20.8,
       relativeHumidityPercent: 63,
@@ -227,7 +329,7 @@ describe("dashboard service", () => {
 
   it("normalizes a cached weather value created before today temperatures were added", async () => {
     const cache = new MemoryCacheStore();
-    cache.seed("weather-v2", {
+    cache.seed("weather:WFJ", {
       temperatureC: 21.4,
       apparentTemperatureC: 20.8,
       relativeHumidityPercent: 63,
@@ -259,9 +361,12 @@ describe("dashboard service", () => {
 
   it("returns stale departures and a partial dashboard when rail refresh fails", async () => {
     const cache = new MemoryCacheStore();
-    const cachedServices = normalizeDarwin(darwinFixture);
+    const cachedServices = normalizeDarwin(
+      darwinFixture,
+      ROUTES["WFJ-EUS"].destination.crs
+    );
     cache.seed(
-      "rail",
+      "rail:WFJ-EUS",
       cachedServices,
       "2026-07-28T12:00:00.000Z"
     );

@@ -1,14 +1,15 @@
 import {
-  ROUTE,
+  DEFAULT_ROUTE,
   type DashboardPayload,
   type DashboardStatus,
   type Departure,
   type DeparturesPanel,
+  type RouteConfig,
   type WeatherPanel
 } from "../shared/contracts";
 import { loadWithFallback, type CacheStore, type CachedResult } from "./provider-cache";
 import { fetchDepartures } from "./providers/rail";
-import { fetchCoachCounts, type CoachCount } from "./providers/rtt";
+import { createRttClient, type CoachCount } from "./providers/rtt";
 import { fetchWeather, type WeatherValue } from "./providers/weather";
 
 const RAIL_ERROR = "Live departures are temporarily unavailable.";
@@ -135,36 +136,45 @@ export function createDashboardService(deps: {
   now: () => Date;
   darwinApiKey: string;
   rttApiToken?: string;
-}): () => Promise<DashboardPayload> {
-  return async () => {
+}): (route?: RouteConfig) => Promise<DashboardPayload> {
+  const rttClient = deps.rttApiToken
+    ? createRttClient(deps.fetcher, deps.rttApiToken)
+    : null;
+
+  return async (route: RouteConfig = DEFAULT_ROUTE) => {
     const now = deps.now();
-    const coachCounts = deps.rttApiToken
+    const coachCounts = rttClient !== null
       ? loadWithFallback({
         cache: deps.cache,
-        key: "rtt-coaches-v1",
+        key: `rtt-coaches:${route.id}`,
         now,
         freshForMs: 5 * 60_000,
         staleForMs: 5 * 60_000,
-        load: () => fetchCoachCounts(deps.fetcher, deps.rttApiToken!)
+        load: () => rttClient.fetchCoachCounts(route, now)
       }).then((result) => result.value)
         .catch(() => [] as CoachCount[])
       : Promise.resolve([] as CoachCount[]);
     const [railResult, weatherResult, coachCountResult] = await Promise.allSettled([
       loadWithFallback({
         cache: deps.cache,
-        key: "rail",
+        key: `rail:${route.id}`,
         now,
         freshForMs: 30_000,
         staleForMs: 5 * 60_000,
-        load: () => fetchDepartures(deps.fetcher, now, deps.darwinApiKey)
+        load: () => fetchDepartures(
+          deps.fetcher,
+          now,
+          deps.darwinApiKey,
+          route
+        )
       }),
       loadWithFallback({
         cache: deps.cache,
-        key: "weather-v2",
+        key: `weather:${route.origin.crs}`,
         now,
         freshForMs: 10 * 60_000,
         staleForMs: 30 * 60_000,
-        load: () => fetchWeather(deps.fetcher, now)
+        load: () => fetchWeather(deps.fetcher, now, route)
       }),
       coachCounts
     ]);
@@ -182,7 +192,10 @@ export function createDashboardService(deps: {
       version: 1,
       generatedAt,
       status: dashboardStatus(departures, weather),
-      route: ROUTE,
+      route: {
+        origin: route.origin,
+        destination: route.destination
+      },
       departures,
       weather
     };

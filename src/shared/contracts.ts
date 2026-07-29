@@ -74,10 +74,6 @@ export type RouteId = keyof typeof ROUTES;
 export type RouteConfig = (typeof ROUTES)[RouteId];
 export const DEFAULT_ROUTE_ID: RouteId = "WFJ-EUS";
 export const DEFAULT_ROUTE: RouteConfig = ROUTES[DEFAULT_ROUTE_ID];
-export const ROUTE = {
-  origin: DEFAULT_ROUTE.origin,
-  destination: DEFAULT_ROUTE.destination
-} as const;
 
 export function isRouteId(value: string): value is RouteId {
   return Object.hasOwn(ROUTES, value);
