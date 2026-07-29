@@ -148,6 +148,31 @@ describe("dashboard rendering", () => {
     expect(queryByRole(root, "list", { name: /forecast/i })).toBeNull();
   });
 
+  it("matches the weather icon to the current condition", () => {
+    const cases = [
+      [0, "Clear sky", "icon-sun"],
+      [2, "Partly cloudy", "icon-partly-cloudy"],
+      [61, "Rain", "icon-rain"],
+      [71, "Snow fall", "icon-snow"],
+      [95, "Thunderstorm", "icon-thunderstorm"],
+      [999, "Conditions unavailable", "icon-cloud"]
+    ] as const;
+
+    for (const [weatherCode, condition, iconClass] of cases) {
+      const weather = getByRole(render({
+        ...livePayload,
+        weather: {
+          ...livePayload.weather,
+          weatherCode,
+          condition
+        }
+      }), "region", { name: "Current weather" });
+
+      expect(weather.querySelector(`.${iconClass}`)).toBeTruthy();
+      expect(within(weather).getByText(condition)).toBeTruthy();
+    }
+  });
+
   it("shows unavailable pressure without hiding current weather", () => {
     const weather = getByRole(render({
       ...livePayload,

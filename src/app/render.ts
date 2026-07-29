@@ -26,12 +26,26 @@ type IconKind =
   | "route"
   | "refresh"
   | "fullscreen"
-  | "weather"
+  | "sun"
+  | "partly-cloudy"
+  | "cloud"
+  | "fog"
+  | "rain"
+  | "snow"
+  | "thunderstorm"
   | "delayed"
   | "cancelled"
   | "stale"
   | "unavailable";
 type StatusIconKind = "delayed" | "cancelled" | "stale" | "unavailable";
+type WeatherIconKind =
+  | "sun"
+  | "partly-cloudy"
+  | "cloud"
+  | "fog"
+  | "rain"
+  | "snow"
+  | "thunderstorm";
 
 function staticIcon(kind: IconKind): SVGSVGElement {
   const svg = document.createElementNS(SVG_NAMESPACE, "svg");
@@ -45,7 +59,13 @@ function staticIcon(kind: IconKind): SVGSVGElement {
     route: "M5 12h14m-4-4 4 4-4 4",
     refresh: "M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6",
     fullscreen: "M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5",
-    weather: "M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 18Z",
+    sun: "M12 3v2m0 14v2M3 12h2m14 0h2m-3.6-5.6 1.4-1.4M5.2 18.8l1.4-1.4m0-10.8L5.2 5.2m13.6 13.6-1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
+    "partly-cloudy": "M9 4v2m-5 3h2m7-5 1.4 1.4M5 5l1.4 1.4M8.5 13.5a3.5 3.5 0 1 1 5.5-3.8M7 19h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 19Z",
+    cloud: "M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 18Z",
+    fog: "M7 15h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 15Zm-2 4h14M7 22h10",
+    rain: "M7 15h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 15Zm2 4 1 2m3-2 1 2m3-2 1 2",
+    snow: "M7 15h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 15Zm2 4v4m-2-2h4m6-2v4m-2-2h4",
+    thunderstorm: "M7 15h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 15Zm5 2-2 4h3l-1 3 4-5h-3l1-2",
     delayed: "M12 7v5l3 2m6-2a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z",
     cancelled: "M7 7l10 10m0-10L7 17m14-5a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z",
     stale: "M4 12a8 8 0 1 0 2.3-5.7M4 5v7h7",
@@ -59,6 +79,31 @@ function staticIcon(kind: IconKind): SVGSVGElement {
   path.setAttribute("stroke-linejoin", "round");
   svg.appendChild(path);
   return svg;
+}
+
+function weatherIconKind(weatherCode: number | null): WeatherIconKind {
+  if (weatherCode === 0 || weatherCode === 1) return "sun";
+  if (weatherCode === 2) return "partly-cloudy";
+  if (weatherCode === 3) return "cloud";
+  if (weatherCode === 45 || weatherCode === 48) return "fog";
+  if (
+    (weatherCode !== null && weatherCode >= 51 && weatherCode <= 67) ||
+    (weatherCode !== null && weatherCode >= 80 && weatherCode <= 82)
+  ) return "rain";
+  if (
+    (weatherCode !== null && weatherCode >= 71 && weatherCode <= 77) ||
+    (weatherCode !== null && weatherCode >= 85 && weatherCode <= 86)
+  ) return "snow";
+  if (weatherCode !== null && weatherCode >= 95 && weatherCode <= 99) {
+    return "thunderstorm";
+  }
+  return "cloud";
+}
+
+function weatherIcon(weatherCode: number | null): SVGSVGElement {
+  const icon = staticIcon(weatherIconKind(weatherCode));
+  icon.classList.add("icon-weather");
+  return icon;
 }
 
 function statusIcon(kind: StatusIconKind): SVGSVGElement {
@@ -284,7 +329,7 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
   }
 
   const summary = element("div", { className: "weather-summary" });
-  summary.appendChild(staticIcon("weather"));
+  summary.appendChild(weatherIcon(panel.weatherCode));
   const temperature = element("p", { className: "weather-temperature" });
   appendExpandedValue(
     temperature,
