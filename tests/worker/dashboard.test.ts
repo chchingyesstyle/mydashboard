@@ -162,6 +162,34 @@ describe("dashboard service", () => {
     expect(second).toEqual(first);
   });
 
+  it("refreshes RTT coach counts no more often than every five minutes", async () => {
+    let now = NOW;
+    let rttLocationRequests = 0;
+    const baseFetcher = networkFetcher();
+    const fetcher = ((input: string | URL | Request, init?: RequestInit) => {
+      if (input.toString().includes("data.rtt.io/rtt/location")) {
+        rttLocationRequests += 1;
+      }
+      return baseFetcher(input, init);
+    }) as typeof fetch;
+    const getDashboard = createDashboardService({
+      fetcher,
+      cache: new MemoryCacheStore(),
+      now: () => now,
+      darwinApiKey: "consumer-key",
+      rttApiToken: "refresh-token"
+    });
+
+    await getDashboard();
+    now = new Date(NOW.getTime() + (4 * 60_000));
+    await getDashboard();
+    expect(rttLocationRequests).toBe(1);
+
+    now = new Date(NOW.getTime() + (5 * 60_000));
+    await getDashboard();
+    expect(rttLocationRequests).toBe(2);
+  });
+
   it("normalizes a cached weather value created before rain chance was added", async () => {
     const cache = new MemoryCacheStore();
     cache.seed("weather-v2", {
