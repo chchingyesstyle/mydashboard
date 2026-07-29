@@ -25,6 +25,7 @@ const livePayload: DashboardPayload = {
         platform: "3",
         operator: "London Overground",
         operatorCode: "LO",
+        coachCount: null,
         status: "on_time",
         isCancelled: false,
         reason: null
@@ -37,6 +38,7 @@ const livePayload: DashboardPayload = {
         platform: null,
         operator: "LNR",
         operatorCode: "LM",
+        coachCount: null,
         status: "delayed",
         isCancelled: false,
         reason: "A signalling fault"
@@ -49,6 +51,7 @@ const livePayload: DashboardPayload = {
         platform: "6",
         operator: "LNR",
         operatorCode: "LM",
+        coachCount: null,
         status: "cancelled",
         isCancelled: true,
         reason: "A train fault"

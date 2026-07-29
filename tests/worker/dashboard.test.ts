@@ -4,6 +4,10 @@ import type { CacheStore } from "../../src/worker/provider-cache";
 import { normalizeDarwin } from "../../src/worker/providers/rail";
 import { darwinFixture } from "../fixtures/darwin";
 import { openMeteoFixture } from "../fixtures/open-meteo";
+import {
+  rttAccessTokenFixture,
+  rttDashboardLocationFixture
+} from "../fixtures/rtt";
 
 class MemoryCacheStore implements CacheStore {
   private readonly responses = new Map<string, Response>();
@@ -24,7 +28,12 @@ class MemoryCacheStore implements CacheStore {
   }
 }
 
-function networkFetcher(options: { rail?: Response; weather?: Response } = {}): typeof fetch {
+function networkFetcher(options: {
+  rail?: Response;
+  weather?: Response;
+  rttAccessToken?: Response;
+  rttLocation?: Response;
+} = {}): typeof fetch {
   return (async (input: string | URL | Request) => {
     const url = input.toString();
     if (url.includes("api1.raildata.org.uk")) {
@@ -34,6 +43,14 @@ function networkFetcher(options: { rail?: Response; weather?: Response } = {}): 
     if (url.includes("api.open-meteo.com")) {
       return options.weather?.clone() ??
         new Response(JSON.stringify(openMeteoFixture));
+    }
+    if (url.includes("data.rtt.io/api/get_access_token")) {
+      return options.rttAccessToken?.clone() ??
+        new Response(JSON.stringify(rttAccessTokenFixture));
+    }
+    if (url.includes("data.rtt.io/rtt/location")) {
+      return options.rttLocation?.clone() ??
+        new Response(JSON.stringify(rttDashboardLocationFixture));
     }
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
@@ -85,6 +102,47 @@ describe("dashboard service", () => {
       pressureMslHpa: 1016.4,
       error: null
     });
+  });
+
+  it("adds RTT coach counts to matching Darwin departures only", async () => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key",
+      rttApiToken: "refresh-token"
+    });
+
+    const dashboard = await getDashboard();
+    const matchingService = dashboard.departures.services.find((service) =>
+      service.scheduledDeparture === "2026-07-28T12:10:00+01:00" &&
+      service.operatorCode === "LM"
+    );
+
+    expect(matchingService?.coachCount).toBe(10);
+    expect(dashboard.departures.services
+      .filter((service) => service !== matchingService)
+      .every((service) => service.coachCount === null)
+    ).toBe(true);
+  });
+
+  it("keeps live Darwin departures when RTT is unavailable", async () => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher({
+        rttLocation: new Response("unavailable", { status: 503 })
+      }),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key",
+      rttApiToken: "refresh-token"
+    });
+
+    const dashboard = await getDashboard();
+
+    expect(dashboard.departures.status).toBe("live");
+    expect(dashboard.departures.services.every(
+      (service) => service.coachCount === null
+    )).toBe(true);
   });
 
   it("keeps a fully cached dashboard snapshot unchanged", async () => {

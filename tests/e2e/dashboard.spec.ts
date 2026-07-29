@@ -22,6 +22,7 @@ const liveDashboard: DashboardPayload = {
         platform: "9",
         operator: "London Northwestern Railway",
         operatorCode: "LM",
+        coachCount: null,
         status: "on_time",
         isCancelled: false,
         reason: null
@@ -34,6 +35,7 @@ const liveDashboard: DashboardPayload = {
         platform: "7",
         operator: "Avanti West Coast",
         operatorCode: "VT",
+        coachCount: null,
         status: "delayed",
         isCancelled: false,
         reason: "Delayed by a late-running service"
@@ -46,6 +48,7 @@ const liveDashboard: DashboardPayload = {
         platform: null,
         operator: "London Overground",
         operatorCode: "LO",
+        coachCount: null,
         status: "cancelled",
         isCancelled: true,
         reason: "Cancelled due to a fault on this train"
@@ -58,6 +61,7 @@ const liveDashboard: DashboardPayload = {
         platform: "10",
         operator: "London Northwestern Railway",
         operatorCode: "LM",
+        coachCount: null,
         status: "on_time",
         isCancelled: false,
         reason: null

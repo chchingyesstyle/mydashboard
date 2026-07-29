@@ -8,10 +8,56 @@ import {
 } from "../shared/contracts";
 import { loadWithFallback, type CacheStore, type CachedResult } from "./provider-cache";
 import { fetchDepartures } from "./providers/rail";
+import { fetchCoachCounts, type CoachCount } from "./providers/rtt";
 import { fetchWeather, type WeatherValue } from "./providers/weather";
 
 const RAIL_ERROR = "Live departures are temporarily unavailable.";
 const WEATHER_ERROR = "Current weather is temporarily unavailable.";
+const londonDateTime = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  hour: "2-digit",
+  hourCycle: "h23",
+  minute: "2-digit",
+  month: "2-digit",
+  second: "2-digit",
+  timeZone: "Europe/London",
+  year: "numeric"
+});
+
+function departureKey(
+  scheduledDeparture: string,
+  operatorCode: string
+): string {
+  const parts = Object.fromEntries(
+    londonDateTime
+      .formatToParts(new Date(scheduledDeparture))
+      .filter(({ type }) => type !== "literal")
+      .map(({ type, value }) => [type, value])
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}|${operatorCode}`;
+}
+
+function coachCountKey(coachCount: CoachCount): string {
+  return `${coachCount.scheduledDeparture}|${coachCount.operatorCode}`;
+}
+
+function enrichDepartures(
+  departures: DeparturesPanel,
+  coachCounts: CoachCount[]
+): DeparturesPanel {
+  const coachCountByService = new Map(
+    coachCounts.map((coachCount) => [coachCountKey(coachCount), coachCount.coachCount])
+  );
+  return {
+    ...departures,
+    services: departures.services.map((service) => ({
+      ...service,
+      coachCount: coachCountByService.get(
+        departureKey(service.scheduledDeparture, service.operatorCode)
+      ) ?? null
+    }))
+  };
+}
 
 function departuresPanel(
   result: PromiseSettledResult<CachedResult<Departure[]>>
@@ -88,10 +134,22 @@ export function createDashboardService(deps: {
   cache: CacheStore;
   now: () => Date;
   darwinApiKey: string;
+  rttApiToken?: string;
 }): () => Promise<DashboardPayload> {
   return async () => {
     const now = deps.now();
-    const [railResult, weatherResult] = await Promise.allSettled([
+    const coachCounts = deps.rttApiToken
+      ? loadWithFallback({
+        cache: deps.cache,
+        key: "rtt-coaches-v1",
+        now,
+        freshForMs: 60_000,
+        staleForMs: 0,
+        load: () => fetchCoachCounts(deps.fetcher, deps.rttApiToken!)
+      }).then((result) => result.value)
+        .catch(() => [] as CoachCount[])
+      : Promise.resolve([] as CoachCount[]);
+    const [railResult, weatherResult, coachCountResult] = await Promise.allSettled([
       loadWithFallback({
         cache: deps.cache,
         key: "rail",
@@ -107,9 +165,13 @@ export function createDashboardService(deps: {
         freshForMs: 10 * 60_000,
         staleForMs: 30 * 60_000,
         load: () => fetchWeather(deps.fetcher, now)
-      })
+      }),
+      coachCounts
     ]);
-    const departures = departuresPanel(railResult);
+    const departures = enrichDepartures(
+      departuresPanel(railResult),
+      coachCountResult.status === "fulfilled" ? coachCountResult.value : []
+    );
     const weather = weatherPanel(weatherResult);
     const generatedAt = [departures.updatedAt, weather.updatedAt]
       .filter((updatedAt): updatedAt is string => updatedAt !== null)

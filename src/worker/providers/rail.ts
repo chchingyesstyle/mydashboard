@@ -56,6 +56,7 @@ function departureFrom(service: DarwinService, generatedAt: string): Departure {
     platform: stringValue(service.platform),
     operator: stringValue(service.operator) ?? malformedResponse(),
     operatorCode: stringValue(service.operatorCode) ?? malformedResponse(),
+    coachCount: null,
     status,
     isCancelled: status === "cancelled",
     reason

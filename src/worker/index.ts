@@ -14,6 +14,7 @@ interface WorkerDependencies {
 interface Env {
   ASSETS: Assets;
   DARWIN_API_KEY: string;
+  RTT_API_TOKEN?: string;
 }
 
 const API_PATH = "/api/v1/dashboard";
@@ -90,7 +91,8 @@ export default {
         fetcher: fetch,
         cache: (caches as CacheStorage & { readonly default: CacheStore }).default,
         now: () => new Date(),
-        darwinApiKey: env.DARWIN_API_KEY
+        darwinApiKey: env.DARWIN_API_KEY,
+        rttApiToken: env.RTT_API_TOKEN
       }),
       assets: env.ASSETS
     }).fetch(request);
