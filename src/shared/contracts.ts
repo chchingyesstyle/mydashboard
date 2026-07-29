@@ -28,6 +28,8 @@ export interface WeatherPanel {
   updatedAt: string | null;
   stale: boolean;
   temperatureC: number | null;
+  temperatureMinTodayC: number | null;
+  temperatureMaxTodayC: number | null;
   apparentTemperatureC: number | null;
   relativeHumidityPercent: number | null;
   precipitationMm: number | null;

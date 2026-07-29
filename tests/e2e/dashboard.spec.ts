@@ -70,6 +70,8 @@ const liveDashboard: DashboardPayload = {
     updatedAt: "2026-07-28T12:00:00.000Z",
     stale: false,
     temperatureC: 21.4,
+    temperatureMinTodayC: 13.2,
+    temperatureMaxTodayC: 26.8,
     apparentTemperatureC: 20.8,
     relativeHumidityPercent: 63,
     precipitationMm: 0,

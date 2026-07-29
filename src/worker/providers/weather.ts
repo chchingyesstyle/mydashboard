@@ -13,6 +13,8 @@ export type WeatherValue = {
 } & {
   pressureMslHpa: number | null;
   rainChanceNext6HoursPercent: number | null;
+  temperatureMinTodayC: number | null;
+  temperatureMaxTodayC: number | null;
 };
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
@@ -68,6 +70,31 @@ function rainChanceNext6Hours(payload: Record<string, unknown>): number | null {
   }
 
   return Math.max(...probabilities);
+}
+
+function todayTemperatureExtremes(
+  payload: Record<string, unknown>
+): { min: number | null; max: number | null } {
+  const daily = payload.daily;
+  if (typeof daily !== "object" || daily === null) {
+    return { min: null, max: null };
+  }
+
+  const values = daily as Record<string, unknown>;
+  const min = values.temperature_2m_min;
+  const max = values.temperature_2m_max;
+  if (
+    !Array.isArray(min) ||
+    !Array.isArray(max) ||
+    typeof min[0] !== "number" ||
+    typeof max[0] !== "number" ||
+    !Number.isFinite(min[0]) ||
+    !Number.isFinite(max[0])
+  ) {
+    return { min: null, max: null };
+  }
+
+  return { min: min[0], max: max[0] };
 }
 
 function conditionFor(weatherCode: number): string {
@@ -129,9 +156,12 @@ export function normalizeWeather(payload: unknown): WeatherValue {
 
   const values = current as Record<string, unknown>;
   const weatherCode = numberValue(values, "weather_code");
+  const temperatures = todayTemperatureExtremes(response);
 
   return {
     temperatureC: numberValue(values, "temperature_2m"),
+    temperatureMinTodayC: temperatures.min,
+    temperatureMaxTodayC: temperatures.max,
     apparentTemperatureC: numberValue(values, "apparent_temperature"),
     relativeHumidityPercent: numberValue(values, "relative_humidity_2m"),
     precipitationMm: numberValue(values, "precipitation"),
@@ -158,6 +188,8 @@ export async function fetchWeather(
   url.searchParams.set("current", CURRENT_FIELDS);
   url.searchParams.set("hourly", "precipitation_probability");
   url.searchParams.set("forecast_hours", "6");
+  url.searchParams.set("daily", "temperature_2m_min,temperature_2m_max");
+  url.searchParams.set("forecast_days", "1");
 
   const response = await fetcher(url, { signal: AbortSignal.timeout(7000) });
 

@@ -6,6 +6,8 @@ describe("Open-Meteo weather provider", () => {
   it("normalizes current Watford weather", () => {
     expect(normalizeWeather(openMeteoFixture)).toEqual({
       temperatureC: 21.4,
+      temperatureMinTodayC: 13.2,
+      temperatureMaxTodayC: 26.8,
       apparentTemperatureC: 20.8,
       relativeHumidityPercent: 63,
       precipitationMm: 0,
@@ -85,6 +87,30 @@ describe("Open-Meteo weather provider", () => {
     });
   });
 
+  it.each([
+    ["absent", undefined],
+    ["empty", []],
+    ["non-numeric", ["13.2"]],
+    ["non-finite", [Number.NaN]]
+  ])("keeps current weather when daily temperatures are %s", (_case, values) => {
+    const payload = {
+      ...openMeteoFixture,
+      daily: values === undefined
+        ? undefined
+        : {
+            ...openMeteoFixture.daily,
+            temperature_2m_min: values,
+            temperature_2m_max: values
+          }
+    };
+
+    expect(normalizeWeather(payload)).toMatchObject({
+      temperatureC: 21.4,
+      temperatureMinTodayC: null,
+      temperatureMaxTodayC: null
+    });
+  });
+
   it("requests current weather and the next six rain probabilities for Watford Junction", async () => {
     let requestedUrl = "";
     const fetcher = (async (input: string | URL | Request) => {
@@ -106,7 +132,10 @@ describe("Open-Meteo weather provider", () => {
     );
     expect(url.searchParams.get("hourly")).toBe("precipitation_probability");
     expect(url.searchParams.get("forecast_hours")).toBe("6");
-    expect(requestedUrl).not.toContain("daily=");
+    expect(url.searchParams.get("daily")).toBe(
+      "temperature_2m_min,temperature_2m_max"
+    );
+    expect(url.searchParams.get("forecast_days")).toBe("1");
   });
 
   it("throws a provider-specific error for a failed response", async () => {

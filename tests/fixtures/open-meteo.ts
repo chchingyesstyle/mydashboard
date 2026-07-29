@@ -44,5 +44,15 @@ export const openMeteoFixture = {
       "2026-07-28T18:00"
     ],
     precipitation_probability: [10, 20, 35, 60, 45, 30]
+  },
+  daily_units: {
+    time: "iso8601",
+    temperature_2m_min: "°C",
+    temperature_2m_max: "°C"
+  },
+  daily: {
+    time: ["2026-07-28"],
+    temperature_2m_min: [13.2],
+    temperature_2m_max: [26.8]
   }
 };

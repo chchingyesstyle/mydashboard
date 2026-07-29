@@ -22,6 +22,8 @@ const payload: DashboardPayload = {
     updatedAt: null,
     stale: false,
     temperatureC: null,
+    temperatureMinTodayC: null,
+    temperatureMaxTodayC: null,
     apparentTemperatureC: null,
     relativeHumidityPercent: null,
     precipitationMm: null,
