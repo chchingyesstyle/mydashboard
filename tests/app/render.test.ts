@@ -131,7 +131,12 @@ describe("dashboard rendering", () => {
     expect(within(weather).getByText("Rain chance, next 6 hours")).toBeTruthy();
     expect(within(weather).getByText("60%")).toBeTruthy();
     expect(within(weather).getByText("60 percent")).toBeTruthy();
-    expect(within(weather).getByText("12.1 km/h at 240°")).toBeTruthy();
+    expect(within(weather).getByText("Today")).toBeTruthy();
+    expect(within(weather).getByText("Min 13.2°C · Max 26.8°C")).toBeTruthy();
+    expect(within(weather).getByText(
+      "Today, minimum temperature 13.2 degrees Celsius, maximum temperature 26.8 degrees Celsius"
+    )).toBeTruthy();
+    expect(within(weather).queryByText(/km\/h at/)).toBeNull();
     expect(within(weather).getByText("1016.40 hPa")).toBeTruthy();
     expect(within(weather).getByText("1016.40 hectopascals")).toBeTruthy();
     expect(queryByRole(root, "heading", { name: /forecast/i })).toBeNull();
@@ -163,6 +168,21 @@ describe("dashboard rendering", () => {
 
     expect(within(weather).getByText("Rain chance, next 6 hours")).toBeTruthy();
     expect(within(weather).getByText("Rain chance unavailable")).toBeTruthy();
+    expect(within(weather).getByText("21.4°C")).toBeTruthy();
+  });
+
+  it("shows unavailable today temperatures without hiding current weather", () => {
+    const weather = getByRole(render({
+      ...livePayload,
+      weather: {
+        ...livePayload.weather,
+        temperatureMinTodayC: null,
+        temperatureMaxTodayC: null
+      }
+    }), "region", { name: "Current weather" });
+
+    expect(within(weather).getByText("Today")).toBeTruthy();
+    expect(within(weather).getByText("Today temperatures unavailable")).toBeTruthy();
     expect(within(weather).getByText("21.4°C")).toBeTruthy();
   });
 

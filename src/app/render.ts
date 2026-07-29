@@ -324,11 +324,13 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
           `${panel.rainChanceNext6HoursPercent}%`,
           `${panel.rainChanceNext6HoursPercent} percent`
         ),
-    weatherValue(
-      "Wind",
-      `${panel.windSpeedKph} km/h at ${panel.windDirectionDegrees}°`,
-      `${panel.windSpeedKph} kilometres per hour at ${panel.windDirectionDegrees} degrees`
-    ),
+    panel.temperatureMinTodayC === null || panel.temperatureMaxTodayC === null
+      ? weatherValue("Today", "Unavailable", "Today temperatures unavailable")
+      : weatherValue(
+          "Today",
+          `Min ${panel.temperatureMinTodayC}°C · Max ${panel.temperatureMaxTodayC}°C`,
+          `Today, minimum temperature ${panel.temperatureMinTodayC} degrees Celsius, maximum temperature ${panel.temperatureMaxTodayC} degrees Celsius`
+        ),
     panel.pressureMslHpa === null
       ? weatherValue("Pressure", "Unavailable", "Pressure unavailable")
       : weatherValue(
