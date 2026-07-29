@@ -103,7 +103,10 @@ const reverseDashboard: DashboardPayload = {
     ...liveDashboard.departures,
     services: liveDashboard.departures.services.map((service) => ({
       ...service,
-      id: `reverse-${service.id}`
+      id: `reverse-${service.id}`,
+      finalDestination: service.operatorCode === "LO"
+        ? { name: "Watford Junction", crs: "WFJ" }
+        : { name: "Birmingham New Street", crs: "BHM" }
     }))
   },
   weather: {
@@ -198,6 +201,9 @@ test("switches route content without phone overflow", async ({ page }) => {
   await expect(page.getByRole("listitem").filter({
     hasText: "London Overground"
   })).toBeVisible();
+  await expect(page.getByText(
+    "London Northwestern Railway · To Birmingham New Street"
+  ).first()).toBeVisible();
   await expect(page.getByRole("region", {
     name: "Current weather"
   })).toContainText("22.1°C");

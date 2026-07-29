@@ -200,14 +200,23 @@ function panelStatus(
   return status;
 }
 
-function renderDeparture(service: Departure): HTMLLIElement {
+function renderDeparture(
+  service: Departure,
+  showFinalDestination: boolean
+): HTMLLIElement {
   const item = element("li", {
     className: `departure departure-${service.status}`
   });
   const serviceDetails = element("article");
+  const finalDestination = showFinalDestination &&
+    service.finalDestination !== null
+    ? service.finalDestination.name
+    : null;
   serviceDetails.setAttribute(
     "aria-label",
-    `${formatTime(service.scheduledDeparture)} ${service.operator} departure`
+    `${formatTime(service.scheduledDeparture)} ${service.operator} departure${
+      finalDestination === null ? "" : ` to ${finalDestination}`
+    }`
   );
 
   const scheduled = element("time", {
@@ -230,12 +239,18 @@ function renderDeparture(service: Departure): HTMLLIElement {
   } else {
     platform.textContent = `Platform ${service.platform}`;
   }
-  const coachLabel = service.coachCount == null
-    ? ""
-    : ` · ${service.coachCount} ${service.coachCount === 1 ? "coach" : "coaches"}`;
+  const operatorMetadata = [
+    service.operator,
+    finalDestination === null ? null : `To ${finalDestination}`,
+    service.coachCount == null
+      ? null
+      : `${service.coachCount} ${
+        service.coachCount === 1 ? "coach" : "coaches"
+      }`
+  ].filter((value): value is string => value !== null);
   const operator = element("p", {
     className: "departure-operator",
-    text: `${service.operator}${coachLabel}`
+    text: operatorMetadata.join(" · ")
   });
 
   serviceDetails.appendChild(scheduled);
@@ -254,7 +269,8 @@ function renderDeparture(service: Departure): HTMLLIElement {
 
 function renderDepartures(
   panel: DeparturesPanel,
-  now: Date
+  now: Date,
+  showFinalDestination: boolean
 ): HTMLElement {
   const section = element("section", { className: "departures-panel" });
   const heading = element("h2", { text: "Departures" });
@@ -290,7 +306,7 @@ function renderDepartures(
   const list = element("ol", { className: "departure-list" });
   list.setAttribute("aria-label", "Direct departures");
   for (const service of panel.services) {
-    list.appendChild(renderDeparture(service));
+    list.appendChild(renderDeparture(service, showFinalDestination));
   }
   section.appendChild(list);
   return section;
@@ -494,7 +510,15 @@ export function renderDashboard(
   now = new Date()
 ): void {
   const panels = element("div", { className: "dashboard-panels" });
-  panels.appendChild(renderDepartures(payload.departures, now));
+  const reverseRoute = ROUTES["EUS-WFJ"];
+  const showFinalDestination =
+    payload.route.origin.crs === reverseRoute.origin.crs &&
+    payload.route.destination.crs === reverseRoute.destination.crs;
+  panels.appendChild(renderDepartures(
+    payload.departures,
+    now,
+    showFinalDestination
+  ));
   panels.appendChild(renderWeather(payload.weather, now));
 
   const connectionNotice = element("p", {

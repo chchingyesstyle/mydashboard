@@ -92,7 +92,10 @@ const reversePayload: DashboardPayload = {
     ...livePayload.departures,
     services: livePayload.departures.services.map((service) => ({
       ...service,
-      id: `reverse-${service.id}`
+      id: `reverse-${service.id}`,
+      finalDestination: service.operatorCode === "LO"
+        ? { name: "Watford Junction", crs: "WFJ" }
+        : { name: "Birmingham New Street", crs: "BHM" }
     }))
   },
   weather: {
@@ -170,6 +173,47 @@ describe("dashboard rendering", () => {
     expect(getByRole(root, "button", {
       name: "To Watford"
     }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("shows final destinations only for Euston to Watford", () => {
+    const reverse = getByRole(render(reversePayload), "region", {
+      name: "Departures"
+    });
+    const forward = getByRole(render(livePayload), "region", {
+      name: "Departures"
+    });
+
+    expect(within(reverse).getByText(
+      "London Overground · To Watford Junction · 5 coaches"
+    )).toBeTruthy();
+    expect(within(reverse).getAllByText(
+      /LNR · To Birmingham New Street/
+    )).toHaveLength(2);
+    expect(within(reverse).getByRole("article", {
+      name: "12:20 LNR departure to Birmingham New Street"
+    })).toBeTruthy();
+    expect(within(forward).queryByText(/To London Euston/)).toBeNull();
+  });
+
+  it("omits unavailable final destination metadata", () => {
+    const payload = {
+      ...reversePayload,
+      departures: {
+        ...reversePayload.departures,
+        services: [{
+          ...reversePayload.departures.services[0],
+          finalDestination: null
+        }]
+      }
+    };
+
+    const departures = getByRole(render(payload), "region", {
+      name: "Departures"
+    });
+    expect(within(departures).getByText(
+      "London Overground · 5 coaches"
+    )).toBeTruthy();
+    expect(within(departures).queryByText(/ · To /)).toBeNull();
   });
 
   it("uses singular grammar and omits unavailable coach counts", () => {
