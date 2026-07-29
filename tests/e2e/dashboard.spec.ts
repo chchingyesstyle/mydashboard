@@ -65,7 +65,7 @@ const liveDashboard: DashboardPayload = {
         expectedDeparture: "2026-07-28T12:34:00+01:00",
         expectedDisplay: "On time",
         platform: "10",
-        platformStatus: "live",
+        platformStatus: "planned",
         operator: "London Northwestern Railway",
         operatorCode: "LM",
         finalDestination: { name: "London Euston", crs: "EUS" },
@@ -236,6 +236,7 @@ test("uses compact departure rows without phone overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openDashboard(page);
 
+  await expect(page.getByText("Planned 10")).toBeVisible();
   const firstRow = await page.locator(".departure article").first().boundingBox();
   const time = await page.locator(".departure-time").first().evaluate((element) =>
     Number.parseFloat(getComputedStyle(element).fontSize)

@@ -236,6 +236,12 @@ function renderDeparture(
   const platform = element("p", { className: "departure-platform" });
   if (service.platform === null) {
     appendExpandedValue(platform, "Platform TBC", "Platform to be confirmed");
+  } else if (service.platformStatus === "planned") {
+    appendExpandedValue(
+      platform,
+      `Planned ${service.platform}`,
+      `Planned platform ${service.platform}`
+    );
   } else {
     platform.textContent = `Platform ${service.platform}`;
   }

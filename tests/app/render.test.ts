@@ -149,6 +149,31 @@ describe("dashboard rendering", () => {
     })).toBeTruthy();
   });
 
+  it("labels planned platforms without presenting them as confirmed", () => {
+    const payload: DashboardPayload = {
+      ...livePayload,
+      departures: {
+        ...livePayload.departures,
+        services: livePayload.departures.services.map((service) =>
+          service.id === "lnr"
+            ? {
+              ...service,
+              platform: "10",
+              platformStatus: "planned"
+            }
+            : service
+        )
+      }
+    };
+    const departures = getByRole(render(payload), "region", {
+      name: "Departures"
+    });
+
+    expect(within(departures).getByText("Planned 10")).toBeTruthy();
+    expect(within(departures).getByText("Planned platform 10")).toBeTruthy();
+    expect(within(departures).queryByText("Platform 10")).toBeNull();
+  });
+
   it("renders two route controls with the loaded direction selected", () => {
     const root = render();
     const toEuston = getByRole<HTMLButtonElement>(root, "button", {
