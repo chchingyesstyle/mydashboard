@@ -4,6 +4,7 @@ import type {
   DeparturesPanel,
   WeatherPanel
 } from "../shared/contracts";
+import { updateThemeControl } from "./theme";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
@@ -374,6 +375,11 @@ function renderHeader(payload: DashboardPayload): HTMLElement {
   metadata.appendChild(status);
 
   const controls = element("div", { className: "dashboard-controls" });
+  const theme = element("button", { className: "theme-control" });
+  theme.type = "button";
+  theme.dataset.dashboardTheme = "";
+  theme.appendChild(element("span"));
+  updateThemeControl(theme);
   const refresh = element("button", { className: "refresh-control" });
   refresh.type = "button";
   refresh.dataset.dashboardRefresh = "";
@@ -386,6 +392,7 @@ function renderHeader(payload: DashboardPayload): HTMLElement {
   fullscreen.setAttribute("aria-label", "Enter fullscreen");
   fullscreen.appendChild(staticIcon("fullscreen"));
   fullscreen.appendChild(element("span", { text: "Fullscreen" }));
+  controls.appendChild(theme);
   controls.appendChild(refresh);
   controls.appendChild(fullscreen);
 

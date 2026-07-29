@@ -88,6 +88,8 @@ function render(
 
 afterEach(() => {
   window.dispatchEvent(new Event("pagehide"));
+  delete document.documentElement.dataset.theme;
+  localStorage.removeItem("dashboard-theme");
   vi.useRealTimers();
   vi.restoreAllMocks();
   document.body.replaceChildren();
@@ -109,6 +111,9 @@ describe("dashboard rendering", () => {
     expect(within(departures).getByText("Platform 3")).toBeTruthy();
     expect(within(departures).getByText("Expected 12:28")).toBeTruthy();
     expect(within(departures).getByText("Platform TBC")).toBeTruthy();
+    expect(getByRole(root, "button", {
+      name: "Switch to dark mode"
+    })).toBeTruthy();
   });
 
   it("keeps a cancelled service and its disruption reason visible", () => {
@@ -437,6 +442,22 @@ function pageTransition(type: "pagehide" | "pageshow", persisted: boolean): Even
 }
 
 describe("dashboard runtime", () => {
+  it("switches to dark mode and persists the selection", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(dashboardResponse());
+    const root = document.createElement("main");
+    document.body.appendChild(root);
+    startDashboardApp(root, fetcher);
+    await settlePromises();
+
+    getByRole(root, "button", { name: "Switch to dark mode" }).click();
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("dashboard-theme")).toBe("dark");
+    expect(getByRole(root, "button", {
+      name: "Switch to light mode"
+    })).toBeTruthy();
+  });
+
   it("renders loading immediately, then loads and refreshes every 30 seconds", async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () =>

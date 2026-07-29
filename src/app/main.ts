@@ -1,5 +1,6 @@
 import { createDashboardClient } from "./api";
 import { renderDashboard, updateStaleAges } from "./render";
+import { toggleTheme, updateThemeControl } from "./theme";
 import type { DashboardPayload } from "../shared/contracts";
 import "./styles.css";
 
@@ -129,6 +130,14 @@ export function startDashboardApp(
   const handleClick = (event: Event): void => {
     const target = event.target;
     if (!(target instanceof Element)) {
+      return;
+    }
+    const themeControl = target.closest<HTMLButtonElement>(
+      "[data-dashboard-theme]"
+    );
+    if (themeControl !== null) {
+      toggleTheme();
+      updateThemeControl(themeControl);
       return;
     }
     if (target.closest("[data-dashboard-refresh]") !== null) {
