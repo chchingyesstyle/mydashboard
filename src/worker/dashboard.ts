@@ -144,7 +144,7 @@ export function createDashboardService(deps: {
         key: "rtt-coaches-v1",
         now,
         freshForMs: 5 * 60_000,
-        staleForMs: 0,
+        staleForMs: 5 * 60_000,
         load: () => fetchCoachCounts(deps.fetcher, deps.rttApiToken!)
       }).then((result) => result.value)
         .catch(() => [] as CoachCount[])

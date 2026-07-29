@@ -180,10 +180,16 @@ describe("dashboard service", () => {
       rttApiToken: "refresh-token"
     });
 
-    await getDashboard();
+    const first = await getDashboard();
     now = new Date(NOW.getTime() + (4 * 60_000));
-    await getDashboard();
+    const cached = await getDashboard();
     expect(rttLocationRequests).toBe(1);
+    expect(first.departures.services.find(
+      (service) => service.scheduledDeparture === "2026-07-28T12:10:00+01:00"
+    )?.coachCount).toBe(10);
+    expect(cached.departures.services.find(
+      (service) => service.scheduledDeparture === "2026-07-28T12:10:00+01:00"
+    )?.coachCount).toBe(10);
 
     now = new Date(NOW.getTime() + (5 * 60_000));
     await getDashboard();
