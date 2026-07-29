@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import type { DashboardPayload } from "../../src/shared/contracts";
+import { describe, expect, it, vi } from "vitest";
+import {
+  ROUTES,
+  type DashboardPayload,
+  type RouteConfig
+} from "../../src/shared/contracts";
 import { createWorker } from "../../src/worker/index";
 
 const payload: DashboardPayload = {
@@ -38,10 +42,23 @@ const payload: DashboardPayload = {
 };
 
 function worker() {
-  return createWorker({
-    getDashboard: async () => payload,
+  const getDashboard = vi.fn(async (
+    route: RouteConfig = ROUTES["WFJ-EUS"]
+  ): Promise<DashboardPayload> => ({
+    ...payload,
+    route: {
+      origin: route.origin,
+      destination: route.destination
+    }
+  }));
+  const runningWorker = createWorker({
+    getDashboard,
     assets: { fetch: async () => new Response("asset") }
   });
+  return {
+    getDashboard,
+    fetch: runningWorker.fetch
+  };
 }
 
 describe("worker routing", () => {
@@ -56,6 +73,51 @@ describe("worker routing", () => {
     expect((await response.json() as { version: number }).version).toBe(1);
   });
 
+  it("uses Watford to Euston when route is absent", async () => {
+    const runningWorker = worker();
+
+    const response = await runningWorker.fetch(
+      new Request("https://dashboard.cchk.uk/api/v1/dashboard")
+    );
+
+    expect(response.status).toBe(200);
+    expect(runningWorker.getDashboard).toHaveBeenCalledWith(
+      ROUTES["WFJ-EUS"]
+    );
+  });
+
+  it("passes the valid reverse route to the dashboard service", async () => {
+    const runningWorker = worker();
+
+    const response = await runningWorker.fetch(new Request(
+      "https://dashboard.cchk.uk/api/v1/dashboard?route=EUS-WFJ"
+    ));
+
+    expect(response.status).toBe(200);
+    expect(runningWorker.getDashboard).toHaveBeenCalledWith(
+      ROUTES["EUS-WFJ"]
+    );
+    expect((await response.json() as DashboardPayload).route.origin.crs).toBe(
+      "EUS"
+    );
+  });
+
+  it.each([
+    "?route=",
+    "?route=unknown",
+    "?route=WFJ-EUS&route=EUS-WFJ"
+  ])("rejects invalid route query %s before loading providers", async (query) => {
+    const runningWorker = worker();
+
+    const response = await runningWorker.fetch(new Request(
+      `https://dashboard.cchk.uk/api/v1/dashboard${query}`
+    ));
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(runningWorker.getDashboard).not.toHaveBeenCalled();
+  });
+
   it("returns a stable SHA-256 ETag for an identical payload", async () => {
     const first = await worker().fetch(
       new Request("https://dashboard.cchk.uk/api/v1/dashboard")
@@ -66,6 +128,29 @@ describe("worker routing", () => {
 
     expect(first.headers.get("etag")).toMatch(/^"[0-9a-f]{64}"$/);
     expect(second.headers.get("etag")).toBe(first.headers.get("etag"));
+  });
+
+  it("keeps conditional ETags independent by route", async () => {
+    const runningWorker = worker();
+    const watford = await runningWorker.fetch(
+      new Request("https://dashboard.cchk.uk/api/v1/dashboard?route=WFJ-EUS")
+    );
+    const euston = await runningWorker.fetch(
+      new Request("https://dashboard.cchk.uk/api/v1/dashboard?route=EUS-WFJ")
+    );
+
+    expect(euston.headers.get("etag")).not.toBe(watford.headers.get("etag"));
+    const wrongRouteTag = await runningWorker.fetch(new Request(
+      "https://dashboard.cchk.uk/api/v1/dashboard?route=EUS-WFJ",
+      { headers: { "if-none-match": watford.headers.get("etag")! } }
+    ));
+    const matchingRouteTag = await runningWorker.fetch(new Request(
+      "https://dashboard.cchk.uk/api/v1/dashboard?route=EUS-WFJ",
+      { headers: { "if-none-match": euston.headers.get("etag")! } }
+    ));
+
+    expect(wrongRouteTag.status).toBe(200);
+    expect(matchingRouteTag.status).toBe(304);
   });
 
   it("returns an empty 304 response when If-None-Match matches", async () => {

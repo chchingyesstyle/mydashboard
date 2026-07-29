@@ -1,4 +1,10 @@
-import type { DashboardPayload } from "../shared/contracts";
+import {
+  DEFAULT_ROUTE,
+  ROUTES,
+  isRouteId,
+  type DashboardPayload,
+  type RouteConfig
+} from "../shared/contracts";
 import { createDashboardService } from "./dashboard";
 import type { CacheStore } from "./provider-cache";
 
@@ -7,7 +13,7 @@ interface Assets {
 }
 
 interface WorkerDependencies {
-  getDashboard: () => Promise<DashboardPayload>;
+  getDashboard: (route: RouteConfig) => Promise<DashboardPayload>;
   assets: Assets;
 }
 
@@ -23,6 +29,15 @@ const CORS_HEADERS = {
   "access-control-allow-methods": "GET, OPTIONS",
   "access-control-allow-headers": "If-None-Match"
 };
+let productionDashboardService:
+  ReturnType<typeof createDashboardService> | undefined;
+
+function routeFor(url: URL): RouteConfig | null {
+  const values = url.searchParams.getAll("route");
+  if (values.length === 0) return DEFAULT_ROUTE;
+  if (values.length !== 1 || !isRouteId(values[0])) return null;
+  return ROUTES[values[0]];
+}
 
 async function etagFor(body: string): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -63,7 +78,15 @@ export function createWorker({ getDashboard, assets }: WorkerDependencies) {
           });
         }
 
-        const body = JSON.stringify(await getDashboard());
+        const route = routeFor(url);
+        if (route === null) {
+          return new Response(null, {
+            status: 400,
+            headers: CORS_HEADERS
+          });
+        }
+
+        const body = JSON.stringify(await getDashboard(route));
         const etag = await etagFor(body);
         const headers = {
           ...CORS_HEADERS,
@@ -90,14 +113,15 @@ export function createWorker({ getDashboard, assets }: WorkerDependencies) {
 
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
+    productionDashboardService ??= createDashboardService({
+      fetcher: fetch,
+      cache: (caches as CacheStorage & { readonly default: CacheStore }).default,
+      now: () => new Date(),
+      darwinApiKey: env.DARWIN_API_KEY,
+      rttApiToken: env.RTT_API_TOKEN
+    });
     return createWorker({
-      getDashboard: createDashboardService({
-        fetcher: fetch,
-        cache: (caches as CacheStorage & { readonly default: CacheStore }).default,
-        now: () => new Date(),
-        darwinApiKey: env.DARWIN_API_KEY,
-        rttApiToken: env.RTT_API_TOKEN
-      }),
+      getDashboard: productionDashboardService,
       assets: env.ASSETS
     }).fetch(request);
   }
