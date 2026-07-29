@@ -149,6 +149,38 @@ test("places weather above departures without horizontal overflow on a phone", a
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 });
 
+test("uses compact departure rows on a large screen", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openDashboard(page);
+
+  const firstRow = await page.locator(".departure article").first().boundingBox();
+  const time = await page.locator(".departure-time").first().evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).fontSize)
+  );
+
+  expect(firstRow).not.toBeNull();
+  expect(firstRow!.height).toBeLessThanOrEqual(70);
+  expect(time).toBeLessThanOrEqual(36);
+});
+
+test("uses compact departure rows without phone overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openDashboard(page);
+
+  const firstRow = await page.locator(".departure article").first().boundingBox();
+  const time = await page.locator(".departure-time").first().evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).fontSize)
+  );
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth
+  }));
+  expect(firstRow).not.toBeNull();
+  expect(firstRow!.height).toBeLessThanOrEqual(60);
+  expect(time).toBeLessThanOrEqual(30);
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+});
+
 test("exposes accessible names for dashboard controls", async ({ page }) => {
   await openDashboard(page);
 
