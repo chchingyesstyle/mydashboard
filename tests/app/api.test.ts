@@ -37,27 +37,131 @@ const payload: DashboardPayload = {
   }
 };
 
+const reversePayload: DashboardPayload = {
+  ...payload,
+  route: {
+    origin: { name: "London Euston", crs: "EUS" },
+    destination: { name: "Watford Junction", crs: "WFJ" }
+  },
+  weather: {
+    ...payload.weather,
+    temperatureC: 22.1
+  }
+};
+
 describe("dashboard client", () => {
-  it("retains the ETag and treats a later 304 as unchanged without parsing it", async () => {
+  it("keeps payloads and ETags separate for both routes", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload), {
+        headers: { etag: "\"watford\"" }
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(reversePayload), {
+        headers: { etag: "\"euston\"" }
+      }))
+      .mockResolvedValueOnce(new Response(null, { status: 304 }))
+      .mockResolvedValueOnce(new Response(null, { status: 304 }));
+    const client = createDashboardClient(fetcher);
+
+    await expect(client.load("WFJ-EUS")).resolves.toEqual({
+      payload,
+      changed: true
+    });
+    await expect(client.load("EUS-WFJ")).resolves.toEqual({
+      payload: reversePayload,
+      changed: true
+    });
+    await expect(client.load("WFJ-EUS")).resolves.toEqual({
+      payload,
+      changed: false
+    });
+    await expect(client.load("EUS-WFJ")).resolves.toEqual({
+      payload: reversePayload,
+      changed: false
+    });
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/dashboard?route=WFJ-EUS",
+      { headers: {} }
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/dashboard?route=EUS-WFJ",
+      { headers: {} }
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      3,
+      "/api/v1/dashboard?route=WFJ-EUS",
+      { headers: { "If-None-Match": "\"watford\"" } }
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      4,
+      "/api/v1/dashboard?route=EUS-WFJ",
+      { headers: { "If-None-Match": "\"euston\"" } }
+    );
+  });
+
+  it("rejects a 304 without a payload cached for that route", async () => {
+    const client = createDashboardClient(
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(null, { status: 304 })
+      )
+    );
+
+    await expect(client.load("WFJ-EUS")).rejects.toThrow(
+      "Dashboard returned 304 without a cached payload"
+    );
+  });
+
+  it("rejects a payload that does not match the requested route", async () => {
+    const client = createDashboardClient(
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(JSON.stringify(reversePayload))
+      )
+    );
+
+    await expect(client.load("WFJ-EUS")).rejects.toThrow(
+      "Malformed dashboard payload"
+    );
+  });
+
+  it("does not parse an unchanged response", async () => {
     const notModified = new Response(null, { status: 304 });
     const json = vi.spyOn(notModified, "json");
     const fetcher = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(JSON.stringify(payload), {
-        headers: { etag: "\"dashboard-v1\"" }
+        headers: { etag: "\"watford\"" }
       }))
       .mockResolvedValueOnce(notModified);
     const client = createDashboardClient(fetcher);
 
-    await expect(client.load()).resolves.toEqual(payload);
-    await expect(client.load()).resolves.toBeNull();
+    await client.load("WFJ-EUS");
+    await client.load("WFJ-EUS");
 
-    expect(fetcher).toHaveBeenNthCalledWith(1, "/api/v1/dashboard", {
-      headers: {}
-    });
-    expect(fetcher).toHaveBeenNthCalledWith(2, "/api/v1/dashboard", {
-      headers: { "If-None-Match": "\"dashboard-v1\"" }
-    });
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/dashboard?route=WFJ-EUS",
+      {
+        headers: { "If-None-Match": "\"watford\"" }
+      }
+    );
     expect(json).not.toHaveBeenCalled();
+  });
+
+  it("keeps the request free of state when no ETag is cached", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(payload))
+    );
+    const client = createDashboardClient(fetcher);
+
+    await client.load("WFJ-EUS");
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/v1/dashboard?route=WFJ-EUS",
+      {
+      headers: {}
+      }
+    );
   });
 
   it("rejects non-successful responses", async () => {
@@ -67,7 +171,7 @@ describe("dashboard client", () => {
       )
     );
 
-    await expect(client.load()).rejects.toThrow(
+    await expect(client.load("WFJ-EUS")).rejects.toThrow(
       "Dashboard request failed with status 503"
     );
   });
@@ -92,6 +196,8 @@ describe("dashboard client", () => {
       )
     );
 
-    await expect(client.load()).rejects.toThrow("Malformed dashboard payload");
+    await expect(client.load("WFJ-EUS")).rejects.toThrow(
+      "Malformed dashboard payload"
+    );
   });
 });

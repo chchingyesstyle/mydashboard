@@ -1,7 +1,10 @@
 import { createDashboardClient } from "./api";
 import { renderDashboard, updateStaleAges } from "./render";
 import { toggleTheme, updateThemeControl } from "./theme";
-import type { DashboardPayload } from "../shared/contracts";
+import {
+  DEFAULT_ROUTE_ID,
+  type DashboardPayload
+} from "../shared/contracts";
 import "./styles.css";
 
 const REFRESH_INTERVAL_MS = 30_000;
@@ -96,10 +99,10 @@ export function startDashboardApp(
     }
 
     try {
-      const payload = await client.load();
-      if (payload !== null) {
-        lastPayload = payload;
-        renderDashboard(root, payload);
+      const result = await client.load(DEFAULT_ROUTE_ID);
+      if (result.changed) {
+        lastPayload = result.payload;
+        renderDashboard(root, result.payload);
         updateClock();
         updateFullscreenControl();
       }
