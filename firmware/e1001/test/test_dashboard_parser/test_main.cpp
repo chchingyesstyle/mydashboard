@@ -229,6 +229,8 @@ void test_parses_operator_code_and_extended_weather_fields() {
       "precipitationMm": 0,
       "rainChanceNext6HoursPercent": 20,
       "pressureMslHpa": 1016.4,
+      "temperatureMinTodayC": 13.2,
+      "temperatureMaxTodayC": 26.8,
       "error": null
     },
     "electricity": {
@@ -252,6 +254,10 @@ void test_parses_operator_code_and_extended_weather_fields() {
   TEST_ASSERT_EQUAL_FLOAT(63, weather.relativeHumidityPercent);
   TEST_ASSERT_TRUE(weather.hasPrecipitationMm);
   TEST_ASSERT_EQUAL_FLOAT(0, weather.precipitationMm);
+  TEST_ASSERT_TRUE(weather.hasTemperatureMinTodayC);
+  TEST_ASSERT_EQUAL_FLOAT(13.2, weather.temperatureMinTodayC);
+  TEST_ASSERT_TRUE(weather.hasTemperatureMaxTodayC);
+  TEST_ASSERT_EQUAL_FLOAT(26.8, weather.temperatureMaxTodayC);
   TEST_ASSERT_TRUE(weather.hasRainChanceNext6HoursPercent);
   TEST_ASSERT_EQUAL_FLOAT(20, weather.rainChanceNext6HoursPercent);
   TEST_ASSERT_TRUE(weather.hasPressureMslHpa);

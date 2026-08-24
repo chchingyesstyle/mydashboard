@@ -47,6 +47,10 @@ struct WeatherPanel {
   double rainChanceNext6HoursPercent;
   bool hasPressureMslHpa;
   double pressureMslHpa;
+  bool hasTemperatureMinTodayC;
+  double temperatureMinTodayC;
+  bool hasTemperatureMaxTodayC;
+  double temperatureMaxTodayC;
 };
 
 struct ElectricityPriceSlot {

@@ -31,6 +31,18 @@ std::string formatWholeNumber(double value) {
   return std::string(buffer);
 }
 
+std::string formatOneDecimal(double value) {
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%.1f", value);
+  return std::string(buffer);
+}
+
+std::string formatTwoDecimals(double value) {
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%.2f", value);
+  return std::string(buffer);
+}
+
 std::string formatPrice(double pricePencePerKwh) {
   char buffer[16];
   snprintf(buffer, sizeof(buffer), "%.2fp", pricePencePerKwh);
@@ -51,7 +63,11 @@ void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::stri
     lines.push_back("Rain (6h) " + formatWholeNumber(weather.rainChanceNext6HoursPercent) + "%");
   }
   if (weather.hasPressureMslHpa) {
-    lines.push_back("Pressure " + formatWholeNumber(weather.pressureMslHpa) + "hPa");
+    lines.push_back("Pressure " + formatTwoDecimals(weather.pressureMslHpa) + "hPa");
+  }
+  if (weather.hasTemperatureMinTodayC && weather.hasTemperatureMaxTodayC) {
+    lines.push_back("Min " + formatOneDecimal(weather.temperatureMinTodayC) + "C / Max " +
+                     formatOneDecimal(weather.temperatureMaxTodayC) + "C");
   }
 }
 
@@ -85,7 +101,7 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
 
   if (model.weather.hasTemperatureC && model.weather.hasCondition) {
     layout.hasWeatherText = true;
-    layout.weatherText = std::to_string(static_cast<int>(model.weather.temperatureC)) +
+    layout.weatherText = formatOneDecimal(model.weather.temperatureC) +
                           "C, " + model.weather.condition;
   } else {
     layout.hasWeatherText = false;

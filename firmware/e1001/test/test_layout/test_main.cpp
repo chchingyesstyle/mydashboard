@@ -120,7 +120,7 @@ void test_weather_text_formatting_and_missing_weather() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
   TEST_ASSERT_TRUE(layout.hasWeatherText);
-  TEST_ASSERT_EQUAL_STRING("12C, Partly cloudy", layout.weatherText.c_str());
+  TEST_ASSERT_EQUAL_STRING("12.4C, Partly cloudy", layout.weatherText.c_str());
 
   DashboardModel modelWithoutWeather;
   modelWithoutWeather.status = DashboardStatus::Partial;
@@ -142,6 +142,8 @@ void test_weather_detail_lines_include_only_present_fields() {
   model.weather.hasRainChanceNext6HoursPercent = true;
   model.weather.rainChanceNext6HoursPercent = 20;
   model.weather.hasPressureMslHpa = false;
+  model.weather.hasTemperatureMinTodayC = false;
+  model.weather.hasTemperatureMaxTodayC = false;
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
@@ -149,6 +151,44 @@ void test_weather_detail_lines_include_only_present_fields() {
   TEST_ASSERT_EQUAL_STRING("Feels like 11C", layout.weatherDetailLines[0].c_str());
   TEST_ASSERT_EQUAL_STRING("Humidity 63%", layout.weatherDetailLines[1].c_str());
   TEST_ASSERT_EQUAL_STRING("Rain (6h) 20%", layout.weatherDetailLines[2].c_str());
+}
+
+void test_pressure_and_today_min_max_lines() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.weather.hasApparentTemperatureC = false;
+  model.weather.hasRelativeHumidityPercent = false;
+  model.weather.hasPrecipitationMm = false;
+  model.weather.hasRainChanceNext6HoursPercent = false;
+  model.weather.hasPressureMslHpa = true;
+  model.weather.pressureMslHpa = 1016.4;
+  model.weather.hasTemperatureMinTodayC = true;
+  model.weather.temperatureMinTodayC = 13.2;
+  model.weather.hasTemperatureMaxTodayC = true;
+  model.weather.temperatureMaxTodayC = 26.8;
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  TEST_ASSERT_EQUAL(2, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL_STRING("Pressure 1016.40hPa", layout.weatherDetailLines[0].c_str());
+  TEST_ASSERT_EQUAL_STRING("Min 13.2C / Max 26.8C", layout.weatherDetailLines[1].c_str());
+}
+
+void test_today_min_max_line_omitted_when_either_missing() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.weather.hasApparentTemperatureC = false;
+  model.weather.hasRelativeHumidityPercent = false;
+  model.weather.hasPrecipitationMm = false;
+  model.weather.hasRainChanceNext6HoursPercent = false;
+  model.weather.hasPressureMslHpa = false;
+  model.weather.hasTemperatureMinTodayC = true;
+  model.weather.temperatureMinTodayC = 13.2;
+  model.weather.hasTemperatureMaxTodayC = false;
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  TEST_ASSERT_EQUAL(0, (int)layout.weatherDetailLines.size());
 }
 
 void test_electricity_rows_capped_at_sixteen_slots() {
@@ -207,6 +247,8 @@ int main(int argc, char **argv) {
   RUN_TEST(test_status_banner_text_for_each_dashboard_status);
   RUN_TEST(test_weather_text_formatting_and_missing_weather);
   RUN_TEST(test_weather_detail_lines_include_only_present_fields);
+  RUN_TEST(test_pressure_and_today_min_max_lines);
+  RUN_TEST(test_today_min_max_line_omitted_when_either_missing);
   RUN_TEST(test_electricity_rows_capped_at_sixteen_slots);
   RUN_TEST(test_battery_percent_defaults_to_hidden_and_can_be_set);
   RUN_TEST(test_battery_percent_from_voltage_matches_calibration_points);

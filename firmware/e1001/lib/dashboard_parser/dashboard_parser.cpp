@@ -123,6 +123,20 @@ void parseWeatherPanel(JsonObject weatherJson, WeatherPanel& weather) {
   } else {
     weather.hasPressureMslHpa = false;
   }
+
+  if (weatherJson["temperatureMinTodayC"].is<double>()) {
+    weather.hasTemperatureMinTodayC = true;
+    weather.temperatureMinTodayC = weatherJson["temperatureMinTodayC"].as<double>();
+  } else {
+    weather.hasTemperatureMinTodayC = false;
+  }
+
+  if (weatherJson["temperatureMaxTodayC"].is<double>()) {
+    weather.hasTemperatureMaxTodayC = true;
+    weather.temperatureMaxTodayC = weatherJson["temperatureMaxTodayC"].as<double>();
+  } else {
+    weather.hasTemperatureMaxTodayC = false;
+  }
 }
 
 void parseElectricityPanel(JsonObject electricityJson, ElectricityPanel& electricity) {
