@@ -80,11 +80,50 @@ void test_row_count_is_capped_at_max_rows() {
   TEST_ASSERT_EQUAL(6, (int)layout.rows.size());
 }
 
+void test_status_banner_text_for_each_dashboard_status() {
+  DashboardModel liveModel;
+  liveModel.status = DashboardStatus::Live;
+  TEST_ASSERT_EQUAL_STRING("Live data", computeLayout(liveModel, kMaxRows).statusBannerText.c_str());
+
+  DashboardModel partialModel;
+  partialModel.status = DashboardStatus::Partial;
+  TEST_ASSERT_EQUAL_STRING("Some data is stale or unavailable",
+                            computeLayout(partialModel, kMaxRows).statusBannerText.c_str());
+
+  DashboardModel unavailableModel;
+  unavailableModel.status = DashboardStatus::Unavailable;
+  TEST_ASSERT_EQUAL_STRING("Live data is unavailable",
+                            computeLayout(unavailableModel, kMaxRows).statusBannerText.c_str());
+}
+
+void test_weather_text_formatting_and_missing_weather() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.weather.hasTemperatureC = true;
+  model.weather.temperatureC = 12.4;
+  model.weather.hasCondition = true;
+  model.weather.condition = "Partly cloudy";
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+  TEST_ASSERT_TRUE(layout.hasWeatherText);
+  TEST_ASSERT_EQUAL_STRING("12C, Partly cloudy", layout.weatherText.c_str());
+
+  DashboardModel modelWithoutWeather;
+  modelWithoutWeather.status = DashboardStatus::Partial;
+  modelWithoutWeather.weather.hasTemperatureC = false;
+  modelWithoutWeather.weather.hasCondition = false;
+
+  LayoutResult layoutWithoutWeather = computeLayout(modelWithoutWeather, kMaxRows);
+  TEST_ASSERT_FALSE(layoutWithoutWeather.hasWeatherText);
+}
+
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_extracts_time_of_day_and_platform_text);
   RUN_TEST(test_null_platform_and_coach_count_produce_fallback_text);
   RUN_TEST(test_delayed_departure_gets_delayed_emphasis);
   RUN_TEST(test_row_count_is_capped_at_max_rows);
+  RUN_TEST(test_status_banner_text_for_each_dashboard_status);
+  RUN_TEST(test_weather_text_formatting_and_missing_weather);
   return UNITY_END();
 }

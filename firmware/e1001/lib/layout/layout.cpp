@@ -13,11 +13,28 @@ std::string extractTimeOfDay(const std::string& isoTimestamp) {
   return isoTimestamp.substr(11, 5);
 }
 
+std::string bannerTextFor(DashboardStatus status) {
+  switch (status) {
+    case DashboardStatus::Live: return "Live data";
+    case DashboardStatus::Partial: return "Some data is stale or unavailable";
+    case DashboardStatus::Unavailable: return "Live data is unavailable";
+  }
+  return "";
+}
+
 }  // namespace
 
 LayoutResult computeLayout(const DashboardModel& model, int maxRows) {
   LayoutResult layout;
-  layout.hasWeatherText = false;
+  layout.statusBannerText = bannerTextFor(model.status);
+
+  if (model.weather.hasTemperatureC && model.weather.hasCondition) {
+    layout.hasWeatherText = true;
+    layout.weatherText = std::to_string(static_cast<int>(model.weather.temperatureC)) +
+                          "C, " + model.weather.condition;
+  } else {
+    layout.hasWeatherText = false;
+  }
 
   int rowCount = static_cast<int>(model.departures.services.size());
   int rowsToRender = rowCount < maxRows ? rowCount : maxRows;
