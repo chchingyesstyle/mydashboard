@@ -118,6 +118,31 @@ void parseWeatherPanel(JsonObject weatherJson, WeatherPanel& weather) {
   }
 }
 
+void parseElectricityPanel(JsonObject electricityJson, ElectricityPanel& electricity) {
+  electricity.status = parsePanelStatus(electricityJson["status"] | "");
+  electricity.stale = electricityJson["stale"] | false;
+
+  if (electricityJson["updatedAt"].is<const char*>()) {
+    electricity.hasUpdatedAt = true;
+    electricity.updatedAt = electricityJson["updatedAt"].as<const char*>();
+  } else {
+    electricity.hasUpdatedAt = false;
+  }
+
+  for (JsonObject slot : electricityJson["prices"].as<JsonArray>()) {
+    std::string validFrom = std::string(slot["validFrom"] | "");
+    std::string validTo = std::string(slot["validTo"] | "");
+    if (validFrom.empty() || validTo.empty() || !slot["pricePencePerKwh"].is<double>()) {
+      continue;
+    }
+    ElectricityPriceSlot priceSlot;
+    priceSlot.validFrom = validFrom;
+    priceSlot.validTo = validTo;
+    priceSlot.pricePencePerKwh = slot["pricePencePerKwh"].as<double>();
+    electricity.prices.push_back(priceSlot);
+  }
+}
+
 }  // namespace
 
 ParseResult parseDashboard(const std::string& json) {
@@ -133,7 +158,8 @@ ParseResult parseDashboard(const std::string& json) {
 
   if (!doc["status"].is<const char*>() ||
       !doc["departures"].is<JsonObject>() ||
-      !doc["weather"].is<JsonObject>()) {
+      !doc["weather"].is<JsonObject>() ||
+      !doc["electricity"].is<JsonObject>()) {
     result.error = "Missing required top-level fields";
     return result;
   }
@@ -142,6 +168,7 @@ ParseResult parseDashboard(const std::string& json) {
   model.status = parseDashboardStatus(doc["status"].as<const char*>());
   parseDeparturesPanel(doc["departures"].as<JsonObject>(), model.departures);
   parseWeatherPanel(doc["weather"].as<JsonObject>(), model.weather);
+  parseElectricityPanel(doc["electricity"].as<JsonObject>(), model.electricity);
 
   result.ok = true;
   result.model = model;

@@ -37,6 +37,13 @@ void test_parses_live_departure_with_all_fields() {
       "temperatureC": 12.4,
       "condition": "Partly cloudy",
       "error": null
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
     }
   })";
 
@@ -96,6 +103,13 @@ void test_handles_null_platform_null_coach_count_and_cancelled_service() {
       "temperatureC": null,
       "condition": null,
       "error": "Current weather is temporarily unavailable."
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
     }
   })";
 
@@ -125,6 +139,13 @@ void test_parses_weather_panel_and_dashboard_status() {
       "temperatureC": 12.4,
       "condition": "Partly cloudy",
       "error": null
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
     }
   })";
 
@@ -147,7 +168,8 @@ void test_parses_stale_and_unavailable_panel_statuses() {
     "status": "unavailable",
     "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
     "departures": {"status": "stale", "updatedAt": "2026-08-24T07:30:00.000Z", "stale": true, "services": [], "error": null},
-    "weather": {"status": "unavailable", "updatedAt": null, "stale": false, "temperatureC": null, "condition": null, "error": "Current weather is temporarily unavailable."}
+    "weather": {"status": "unavailable", "updatedAt": null, "stale": false, "temperatureC": null, "condition": null, "error": "Current weather is temporarily unavailable."},
+    "electricity": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "prices": [], "error": null}
   })";
 
   ParseResult result = parseDashboard(json);
@@ -203,6 +225,13 @@ void test_parses_operator_code_and_extended_weather_fields() {
       "rainChanceNext6HoursPercent": 20,
       "pressureMslHpa": 1016.4,
       "error": null
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
     }
   })";
 
@@ -243,6 +272,13 @@ void test_extended_weather_fields_absent_when_null() {
       "rainChanceNext6HoursPercent": null,
       "pressureMslHpa": null,
       "error": null
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
     }
   })";
 
@@ -253,6 +289,50 @@ void test_extended_weather_fields_absent_when_null() {
   TEST_ASSERT_FALSE(result.model.weather.hasPressureMslHpa);
 }
 
+void test_parses_electricity_panel_skipping_malformed_slots() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "temperatureC": 12.4, "condition": "Partly cloudy", "error": null},
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [
+        {"validFrom": "2026-08-24T08:00:00Z", "validTo": "2026-08-24T08:30:00Z", "pricePencePerKwh": 20.5},
+        {"validFrom": "2026-08-24T08:30:00Z", "validTo": "2026-08-24T09:00:00Z", "pricePencePerKwh": null}
+      ],
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_TRUE(result.model.electricity.status == PanelStatus::Live);
+  TEST_ASSERT_EQUAL(1, (int)result.model.electricity.prices.size());
+  TEST_ASSERT_EQUAL_STRING("2026-08-24T08:00:00Z", result.model.electricity.prices[0].validFrom.c_str());
+  TEST_ASSERT_EQUAL_FLOAT(20.5, result.model.electricity.prices[0].pricePencePerKwh);
+}
+
+void test_rejects_dashboard_missing_electricity_panel() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "temperatureC": 12.4, "condition": "Partly cloudy", "error": null}
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_FALSE(result.ok);
+}
+
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_parses_live_departure_with_all_fields);
@@ -261,5 +341,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parses_stale_and_unavailable_panel_statuses);
   RUN_TEST(test_parses_operator_code_and_extended_weather_fields);
   RUN_TEST(test_extended_weather_fields_absent_when_null);
+  RUN_TEST(test_parses_electricity_panel_skipping_malformed_slots);
+  RUN_TEST(test_rejects_dashboard_missing_electricity_panel);
   return UNITY_END();
 }

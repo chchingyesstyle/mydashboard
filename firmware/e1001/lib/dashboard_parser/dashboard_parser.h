@@ -47,10 +47,25 @@ struct WeatherPanel {
   double pressureMslHpa;
 };
 
+struct ElectricityPriceSlot {
+  std::string validFrom;
+  std::string validTo;
+  double pricePencePerKwh;
+};
+
+struct ElectricityPanel {
+  PanelStatus status;
+  bool stale;
+  bool hasUpdatedAt;
+  std::string updatedAt;
+  std::vector<ElectricityPriceSlot> prices;
+};
+
 struct DashboardModel {
   DashboardStatus status;
   DeparturesPanel departures;
   WeatherPanel weather;
+  ElectricityPanel electricity;
 };
 
 struct ParseResult {
