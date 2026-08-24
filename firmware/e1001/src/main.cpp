@@ -3,6 +3,7 @@
 #include <esp_sleep.h>
 #include <cstring>
 
+#include "battery.h"
 #include "dashboard_client.h"
 #include "dashboard_parser.h"
 #include "layout.h"
@@ -39,7 +40,8 @@ void setup() {
   } else if (fetch.status == FetchStatus::Updated) {
     ParseResult parsed = parseDashboard(fetch.body);
     if (parsed.ok) {
-      LayoutResult layout = computeLayout(parsed.model, kMaxRows);
+      int batteryPercent = batteryPercentFromVoltage(readBatteryVoltage());
+      LayoutResult layout = computeLayout(parsed.model, kMaxRows, batteryPercent);
       renderDashboard(layout);
       strncpy(storedEtag, fetch.etag.c_str(), sizeof(storedEtag) - 1);
       storedEtag[sizeof(storedEtag) - 1] = '\0';

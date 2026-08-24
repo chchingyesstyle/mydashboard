@@ -1,5 +1,6 @@
 #include "layout.h"
 
+#include <cmath>
 #include <cstdio>
 
 namespace {
@@ -32,7 +33,7 @@ std::string formatWholeNumber(double value) {
 
 std::string formatPrice(double pricePencePerKwh) {
   char buffer[16];
-  snprintf(buffer, sizeof(buffer), "%.1fp", pricePencePerKwh);
+  snprintf(buffer, sizeof(buffer), "%.2fp", pricePencePerKwh);
   return std::string(buffer);
 }
 
@@ -56,8 +57,30 @@ void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::stri
 
 }  // namespace
 
-LayoutResult computeLayout(const DashboardModel& model, int maxRows) {
+int batteryPercentFromVoltage(double voltage) {
+  struct Point { double voltage; int percent; };
+  static const Point kCurve[] = {
+    {3.27, 0}, {3.30, 5}, {3.41, 10}, {3.49, 20}, {3.58, 30},
+    {3.68, 40}, {3.75, 50}, {3.80, 60}, {3.85, 70}, {3.91, 80},
+    {3.96, 90}, {4.15, 100}
+  };
+  const int count = sizeof(kCurve) / sizeof(kCurve[0]);
+
+  if (voltage <= kCurve[0].voltage) return kCurve[0].percent;
+  if (voltage >= kCurve[count - 1].voltage) return kCurve[count - 1].percent;
+
+  for (int i = 0; i < count - 1; i++) {
+    if (voltage >= kCurve[i].voltage && voltage <= kCurve[i + 1].voltage) {
+      double ratio = (voltage - kCurve[i].voltage) / (kCurve[i + 1].voltage - kCurve[i].voltage);
+      return static_cast<int>(std::round(kCurve[i].percent + ratio * (kCurve[i + 1].percent - kCurve[i].percent)));
+    }
+  }
+  return 0;
+}
+
+LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent) {
   LayoutResult layout;
+  layout.batteryPercent = batteryPercent;
   layout.statusBannerText = bannerTextFor(model.status);
 
   if (model.weather.hasTemperatureC && model.weather.hasCondition) {

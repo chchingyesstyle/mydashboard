@@ -169,9 +169,32 @@ void test_electricity_rows_capped_at_sixteen_slots() {
 
   TEST_ASSERT_EQUAL(16, (int)layout.electricityRows.size());
   TEST_ASSERT_EQUAL_STRING("08:00", layout.electricityRows[0].time.c_str());
-  TEST_ASSERT_EQUAL_STRING("20.0p", layout.electricityRows[0].priceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("20.00p", layout.electricityRows[0].priceText.c_str());
   TEST_ASSERT_EQUAL_STRING("15:30", layout.electricityRows[15].time.c_str());
-  TEST_ASSERT_EQUAL_STRING("35.0p", layout.electricityRows[15].priceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("35.00p", layout.electricityRows[15].priceText.c_str());
+}
+
+void test_battery_percent_defaults_to_hidden_and_can_be_set() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+
+  TEST_ASSERT_EQUAL(-1, computeLayout(model, kMaxRows).batteryPercent);
+  TEST_ASSERT_EQUAL(87, computeLayout(model, kMaxRows, 87).batteryPercent);
+}
+
+void test_battery_percent_from_voltage_matches_calibration_points() {
+  TEST_ASSERT_EQUAL(0, batteryPercentFromVoltage(3.27));
+  TEST_ASSERT_EQUAL(50, batteryPercentFromVoltage(3.75));
+  TEST_ASSERT_EQUAL(100, batteryPercentFromVoltage(4.15));
+}
+
+void test_battery_percent_from_voltage_interpolates_between_points() {
+  TEST_ASSERT_EQUAL(45, batteryPercentFromVoltage(3.715));
+}
+
+void test_battery_percent_from_voltage_clamps_out_of_range() {
+  TEST_ASSERT_EQUAL(0, batteryPercentFromVoltage(2.5));
+  TEST_ASSERT_EQUAL(100, batteryPercentFromVoltage(4.5));
 }
 
 int main(int argc, char **argv) {
@@ -185,5 +208,9 @@ int main(int argc, char **argv) {
   RUN_TEST(test_weather_text_formatting_and_missing_weather);
   RUN_TEST(test_weather_detail_lines_include_only_present_fields);
   RUN_TEST(test_electricity_rows_capped_at_sixteen_slots);
+  RUN_TEST(test_battery_percent_defaults_to_hidden_and_can_be_set);
+  RUN_TEST(test_battery_percent_from_voltage_matches_calibration_points);
+  RUN_TEST(test_battery_percent_from_voltage_interpolates_between_points);
+  RUN_TEST(test_battery_percent_from_voltage_clamps_out_of_range);
   return UNITY_END();
 }
