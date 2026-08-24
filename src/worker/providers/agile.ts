@@ -51,6 +51,8 @@ export async function fetchAgilePrices(
 ): Promise<ElectricityPriceSlot[]> {
   const url = new URL(AGILE_RATES_URL);
   url.searchParams.set("page_size", "48");
+  url.searchParams.set("period_from", now.toISOString());
+  url.searchParams.set("period_to", new Date(now.getTime() + 13 * 60 * 60_000).toISOString());
 
   const response = await fetcher(url, { signal: AbortSignal.timeout(7000) });
 

@@ -60,6 +60,10 @@ describe("Octopus Agile electricity provider", () => {
       "https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/"
     );
     expect(url.searchParams.get("page_size")).toBe("48");
+    expect(url.searchParams.get("period_from")).toBe(NOW.toISOString());
+    expect(url.searchParams.get("period_to")).toBe(
+      new Date(NOW.getTime() + 13 * 60 * 60_000).toISOString()
+    );
   });
 
   it("throws a provider-specific error for a failed response", async () => {
