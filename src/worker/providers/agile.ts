@@ -50,9 +50,13 @@ export async function fetchAgilePrices(
   now: Date
 ): Promise<ElectricityPriceSlot[]> {
   const url = new URL(AGILE_RATES_URL);
-  url.searchParams.set("page_size", "48");
+  // A large page_size is a deliberate safety margin: Octopus can publish up
+  // to ~2 days of future half-hour slots, and this guarantees the current
+  // moment is covered in a single page regardless of how far ahead
+  // publishing has reached, without depending on period_from/period_to
+  // pagination behavior being reliable for every caller.
+  url.searchParams.set("page_size", "150");
   url.searchParams.set("period_from", now.toISOString());
-  url.searchParams.set("period_to", new Date(now.getTime() + 13 * 60 * 60_000).toISOString());
 
   const response = await fetcher(url, { signal: AbortSignal.timeout(7000) });
 
