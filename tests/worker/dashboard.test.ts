@@ -4,6 +4,7 @@ import { createDashboardService } from "../../src/worker/dashboard";
 import type { CacheStore } from "../../src/worker/provider-cache";
 import { normalizeDarwin } from "../../src/worker/providers/rail";
 import { darwinFixture, reverseDarwinFixture } from "../fixtures/darwin";
+import { octopusAgileFixture } from "../fixtures/octopus-agile";
 import { openMeteoFixture } from "../fixtures/open-meteo";
 import {
   rttAccessTokenFixture,
@@ -39,6 +40,7 @@ class MemoryCacheStore implements CacheStore {
 function networkFetcher(options: {
   rail?: Response;
   weather?: Response;
+  electricity?: Response;
   rttAccessToken?: Response;
   rttLocation?: Response;
 } = {}): typeof fetch {
@@ -67,6 +69,10 @@ function networkFetcher(options: {
             ? rttReverseLocationFixture
             : rttDashboardLocationFixture
         ));
+    }
+    if (url.includes("api.octopus.energy")) {
+      return options.electricity?.clone() ??
+        new Response(JSON.stringify(octopusAgileFixture));
     }
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
@@ -118,6 +124,67 @@ describe("dashboard service", () => {
       pressureMslHpa: 1016.4,
       error: null
     });
+  });
+
+  it("includes a live electricity panel with current and future Agile prices", async () => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard();
+
+    expect(dashboard.electricity.status).toBe("live");
+    expect(dashboard.electricity.updatedAt).toBe(NOW.toISOString());
+    expect(dashboard.electricity.stale).toBe(false);
+    expect(dashboard.electricity.error).toBeNull();
+    expect(dashboard.electricity.prices).toHaveLength(8);
+    expect(dashboard.electricity.prices[0]).toEqual({
+      validFrom: "2026-07-28T12:00:00Z",
+      validTo: "2026-07-28T12:30:00Z",
+      pricePencePerKwh: 20.475
+    });
+  });
+
+  it("keeps departures and weather live when electricity has no fallback", async () => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher({
+        electricity: new Response("unavailable", { status: 503 })
+      }),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard();
+
+    expect(dashboard.status).toBe("live");
+    expect(dashboard.departures.status).toBe("live");
+    expect(dashboard.weather.status).toBe("live");
+    expect(dashboard.electricity).toEqual({
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      prices: [],
+      error: "Electricity prices are temporarily unavailable."
+    });
+  });
+
+  it("caches electricity independently of route", async () => {
+    const cache = new MemoryCacheStore();
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache,
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    await getDashboard(ROUTES["WFJ-EUS"]);
+    await getDashboard(ROUTES["EUS-WFJ"]);
+
+    expect(cache.keys().filter((key) => key === "electricity")).toHaveLength(1);
   });
 
   it.each([
@@ -497,9 +564,10 @@ describe("dashboard service", () => {
     const dashboard = getDashboard();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(requestedUrls).toHaveLength(2);
+    expect(requestedUrls).toHaveLength(3);
     resolvers[0](new Response(JSON.stringify(darwinFixture)));
     resolvers[1](new Response(JSON.stringify(openMeteoFixture)));
+    resolvers[2](new Response(JSON.stringify(octopusAgileFixture)));
     await expect(dashboard).resolves.toMatchObject({ status: "live" });
   });
 

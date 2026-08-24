@@ -4,10 +4,13 @@ import {
   type DashboardStatus,
   type Departure,
   type DeparturesPanel,
+  type ElectricityPanel,
+  type ElectricityPriceSlot,
   type RouteConfig,
   type WeatherPanel
 } from "../shared/contracts";
 import { loadWithFallback, type CacheStore, type CachedResult } from "./provider-cache";
+import { fetchAgilePrices } from "./providers/agile";
 import { fetchDepartures } from "./providers/rail";
 import {
   createRttClient,
@@ -17,6 +20,7 @@ import { fetchWeather, type WeatherValue } from "./providers/weather";
 
 const RAIL_ERROR = "Live departures are temporarily unavailable.";
 const WEATHER_ERROR = "Current weather is temporarily unavailable.";
+const ELECTRICITY_ERROR = "Electricity prices are temporarily unavailable.";
 const londonDateTime = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   hour: "2-digit",
@@ -142,6 +146,28 @@ function weatherPanel(
   };
 }
 
+function electricityPanel(
+  result: PromiseSettledResult<CachedResult<ElectricityPriceSlot[]>>
+): ElectricityPanel {
+  if (result.status === "rejected") {
+    return {
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      prices: [],
+      error: ELECTRICITY_ERROR
+    };
+  }
+
+  return {
+    status: result.value.stale ? "stale" : "live",
+    updatedAt: result.value.updatedAt,
+    stale: result.value.stale,
+    prices: result.value.value,
+    error: null
+  };
+}
+
 function dashboardStatus(
   departures: DeparturesPanel,
   weather: WeatherPanel
@@ -177,7 +203,7 @@ export function createDashboardService(deps: {
       }).then((result) => result.value)
         .catch(() => [] as RttServiceEnrichment[])
       : Promise.resolve([] as RttServiceEnrichment[]);
-    const [railResult, weatherResult, enrichmentResult] = await Promise.allSettled([
+    const [railResult, weatherResult, electricityResult, enrichmentResult] = await Promise.allSettled([
       loadWithFallback({
         cache: deps.cache,
         key: `rail:${route.id}`,
@@ -199,6 +225,14 @@ export function createDashboardService(deps: {
         staleForMs: 30 * 60_000,
         load: () => fetchWeather(deps.fetcher, now, route)
       }),
+      loadWithFallback({
+        cache: deps.cache,
+        key: "electricity",
+        now,
+        freshForMs: 30 * 60_000,
+        staleForMs: 3 * 60 * 60_000,
+        load: () => fetchAgilePrices(deps.fetcher, now)
+      }),
       serviceEnrichments
     ]);
     const departures = enrichDepartures(
@@ -206,7 +240,8 @@ export function createDashboardService(deps: {
       enrichmentResult.status === "fulfilled" ? enrichmentResult.value : []
     );
     const weather = weatherPanel(weatherResult);
-    const generatedAt = [departures.updatedAt, weather.updatedAt]
+    const electricity = electricityPanel(electricityResult);
+    const generatedAt = [departures.updatedAt, weather.updatedAt, electricity.updatedAt]
       .filter((updatedAt): updatedAt is string => updatedAt !== null)
       .sort()
       .at(-1) ?? now.toISOString();
@@ -220,7 +255,8 @@ export function createDashboardService(deps: {
         destination: route.destination
       },
       departures,
-      weather
+      weather,
+      electricity
     };
   };
 }
