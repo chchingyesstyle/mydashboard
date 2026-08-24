@@ -65,7 +65,7 @@ npx playwright install chromium
   fixed coordinates for the selected origin and is cached for 10 minutes.
 - Electricity prices come from [Octopus Energy's](https://octopus.energy/)
   public Agile tariff API (no authentication required) for tariff
-  `E-1R-AGILE-24-10-01-A`, cached for 30 minutes. This panel is API-only — the
+  `E-1R-AGILE-24-10-01-A`, cached for 15 minutes. This panel is API-only — the
   browser dashboard does not display it; it exists for the E1001 firmware.
 
 Rail data is provided by National Rail. Weather data is provided by Open-Meteo.

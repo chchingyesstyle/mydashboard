@@ -229,7 +229,7 @@ export function createDashboardService(deps: {
         cache: deps.cache,
         key: "electricity",
         now,
-        freshForMs: 30 * 60_000,
+        freshForMs: 15 * 60_000,
         staleForMs: 3 * 60 * 60_000,
         load: () => fetchAgilePrices(deps.fetcher, now)
       }),
