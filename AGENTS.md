@@ -48,6 +48,9 @@ These instructions apply to the entire repository.
   Darwin Consumer secret is not used by this product.
 - Deploy through Cloudflare Workers and verify the production API and page at `dashboard.cchk.uk`.
 - Push intended source changes to `https://github.com/chchingyesstyle/mydashboard`.
+- Keep the `cchk.uk` Cloudflare zone's minimum TLS version at 1.2. The
+  reTerminal E1001 firmware's ESP32 TLS stack cannot negotiate TLS 1.3;
+  raising the zone minimum back above 1.2 breaks that client.
 
 ## Behavioral Guidelines
 
