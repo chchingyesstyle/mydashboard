@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <driver/rtc_io.h>
 #include <esp_sleep.h>
 #include <cstring>
 
@@ -11,10 +12,17 @@
 
 namespace {
 constexpr uint64_t kSleepMicroseconds = 5ULL * 60 * 1000000;
+// Right white button. The green button (GPIO3) is a boot-strapping pin on
+// the ESP32-S3 and Seeed's own docs warn against using it as a wake source,
+// since it can interfere with future USB firmware uploads.
+constexpr gpio_num_t kRefreshButtonPin = GPIO_NUM_4;
 RTC_DATA_ATTR char storedEtag[128] = "";
 
 void goToSleep() {
   WiFi.disconnect(true);
+  rtc_gpio_pullup_en(kRefreshButtonPin);
+  rtc_gpio_pulldown_dis(kRefreshButtonPin);
+  esp_sleep_enable_ext0_wakeup(kRefreshButtonPin, 0);
   esp_sleep_enable_timer_wakeup(kSleepMicroseconds);
   esp_deep_sleep_start();
 }
@@ -23,7 +31,10 @@ void goToSleep() {
 void setup() {
   Serial0.begin(115200);
   delay(200);
-  Serial0.println("E1001 waking up");
+  Serial0.println(
+      esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0
+          ? "E1001 waking up (manual refresh button)"
+          : "E1001 waking up");
 
   initDisplay();
 
