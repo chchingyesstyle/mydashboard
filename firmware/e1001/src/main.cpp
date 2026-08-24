@@ -20,14 +20,14 @@ void goToSleep() {
 }  // namespace
 
 void setup() {
-  Serial.begin(115200);
+  Serial0.begin(115200);
   delay(200);
-  Serial.println("E1001 waking up");
+  Serial0.println("E1001 waking up");
 
   initDisplay();
 
   if (!connectWiFi(15000)) {
-    Serial.println("WiFi connect failed, keeping existing screen");
+    Serial0.println("WiFi connect failed, keeping existing screen");
     goToSleep();
     return;
   }
@@ -35,7 +35,7 @@ void setup() {
   FetchResult fetch = fetchDashboard(std::string(storedEtag));
 
   if (fetch.status == FetchStatus::NotModified) {
-    Serial.println("304 Not Modified, skipping redraw");
+    Serial0.println("304 Not Modified, skipping redraw");
   } else if (fetch.status == FetchStatus::Updated) {
     ParseResult parsed = parseDashboard(fetch.body);
     if (parsed.ok) {
@@ -43,13 +43,13 @@ void setup() {
       renderDashboard(layout);
       strncpy(storedEtag, fetch.etag.c_str(), sizeof(storedEtag) - 1);
       storedEtag[sizeof(storedEtag) - 1] = '\0';
-      Serial.println("Rendered updated dashboard");
+      Serial0.println("Rendered updated dashboard");
     } else {
-      Serial.print("Parse failed, keeping existing screen: ");
-      Serial.println(parsed.error.c_str());
+      Serial0.print("Parse failed, keeping existing screen: ");
+      Serial0.println(parsed.error.c_str());
     }
   } else {
-    Serial.println("Fetch failed, keeping existing screen");
+    Serial0.println("Fetch failed, keeping existing screen");
   }
 
   goToSleep();

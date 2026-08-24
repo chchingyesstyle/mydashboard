@@ -18,6 +18,8 @@ bool connectWiFi(uint32_t timeoutMs) {
   uint32_t start = millis();
   while (WiFi.status() != WL_CONNECTED) {
     if (millis() - start > timeoutMs) {
+      Serial0.print("WiFi status code: ");
+      Serial0.println(WiFi.status());
       return false;
     }
     delay(200);
