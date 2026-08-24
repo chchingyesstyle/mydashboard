@@ -47,7 +47,8 @@ GET https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-
 ```
 
 No authentication is required for this endpoint. The provider filters
-returned slots to those with `valid_from >= now`, sorts ascending by
+returned slots to those with `valid_to > now` (so the currently active
+half-hour slot is included, not just future ones), sorts ascending by
 `valid_from`, and returns the next 24 half-hour slots (12 hours — more
 than the E1001 currently needs, to avoid revisiting this provider if a
 future client wants a longer window).
