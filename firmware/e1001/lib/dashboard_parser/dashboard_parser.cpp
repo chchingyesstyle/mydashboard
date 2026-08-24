@@ -56,6 +56,32 @@ void parseDeparturesPanel(JsonObject departuresJson, DeparturesPanel& departures
   }
 }
 
+void parseWeatherPanel(JsonObject weatherJson, WeatherPanel& weather) {
+  weather.status = parsePanelStatus(weatherJson["status"] | "");
+  weather.stale = weatherJson["stale"] | false;
+
+  if (weatherJson["updatedAt"].is<const char*>()) {
+    weather.hasUpdatedAt = true;
+    weather.updatedAt = weatherJson["updatedAt"].as<const char*>();
+  } else {
+    weather.hasUpdatedAt = false;
+  }
+
+  if (weatherJson["temperatureC"].is<double>()) {
+    weather.hasTemperatureC = true;
+    weather.temperatureC = weatherJson["temperatureC"].as<double>();
+  } else {
+    weather.hasTemperatureC = false;
+  }
+
+  if (weatherJson["condition"].is<const char*>()) {
+    weather.hasCondition = true;
+    weather.condition = weatherJson["condition"].as<const char*>();
+  } else {
+    weather.hasCondition = false;
+  }
+}
+
 }  // namespace
 
 ParseResult parseDashboard(const std::string& json) {
@@ -79,6 +105,7 @@ ParseResult parseDashboard(const std::string& json) {
   DashboardModel model;
   model.status = parseDashboardStatus(doc["status"].as<const char*>());
   parseDeparturesPanel(doc["departures"].as<JsonObject>(), model.departures);
+  parseWeatherPanel(doc["weather"].as<JsonObject>(), model.weather);
 
   result.ok = true;
   result.model = model;
