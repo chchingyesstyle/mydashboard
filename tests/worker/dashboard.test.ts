@@ -142,8 +142,8 @@ describe("dashboard service", () => {
     expect(dashboard.electricity.error).toBeNull();
     expect(dashboard.electricity.prices).toHaveLength(8);
     expect(dashboard.electricity.prices[0]).toEqual({
-      validFrom: "2026-07-28T12:00:00Z",
-      validTo: "2026-07-28T12:30:00Z",
+      validFrom: "2026-07-28T13:00:00+01:00",
+      validTo: "2026-07-28T13:30:00+01:00",
       pricePencePerKwh: 20.475
     });
   });

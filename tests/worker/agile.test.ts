@@ -9,14 +9,14 @@ describe("Octopus Agile electricity provider", () => {
     const slots = normalizeAgilePrices(octopusAgileFixture, NOW);
 
     expect(slots).toEqual([
-      { validFrom: "2026-07-28T12:00:00Z", validTo: "2026-07-28T12:30:00Z", pricePencePerKwh: 20.475 },
-      { validFrom: "2026-07-28T12:30:00Z", validTo: "2026-07-28T13:00:00Z", pricePencePerKwh: 22.05 },
-      { validFrom: "2026-07-28T13:00:00Z", validTo: "2026-07-28T13:30:00Z", pricePencePerKwh: 23.625 },
-      { validFrom: "2026-07-28T13:30:00Z", validTo: "2026-07-28T14:00:00Z", pricePencePerKwh: 25.2 },
-      { validFrom: "2026-07-28T14:00:00Z", validTo: "2026-07-28T14:30:00Z", pricePencePerKwh: 26.775 },
-      { validFrom: "2026-07-28T14:30:00Z", validTo: "2026-07-28T15:00:00Z", pricePencePerKwh: 28.35 },
-      { validFrom: "2026-07-28T15:00:00Z", validTo: "2026-07-28T15:30:00Z", pricePencePerKwh: 29.925 },
-      { validFrom: "2026-07-28T15:30:00Z", validTo: "2026-07-28T16:00:00Z", pricePencePerKwh: 31.5 }
+      { validFrom: "2026-07-28T13:00:00+01:00", validTo: "2026-07-28T13:30:00+01:00", pricePencePerKwh: 20.475 },
+      { validFrom: "2026-07-28T13:30:00+01:00", validTo: "2026-07-28T14:00:00+01:00", pricePencePerKwh: 22.05 },
+      { validFrom: "2026-07-28T14:00:00+01:00", validTo: "2026-07-28T14:30:00+01:00", pricePencePerKwh: 23.625 },
+      { validFrom: "2026-07-28T14:30:00+01:00", validTo: "2026-07-28T15:00:00+01:00", pricePencePerKwh: 25.2 },
+      { validFrom: "2026-07-28T15:00:00+01:00", validTo: "2026-07-28T15:30:00+01:00", pricePencePerKwh: 26.775 },
+      { validFrom: "2026-07-28T15:30:00+01:00", validTo: "2026-07-28T16:00:00+01:00", pricePencePerKwh: 28.35 },
+      { validFrom: "2026-07-28T16:00:00+01:00", validTo: "2026-07-28T16:30:00+01:00", pricePencePerKwh: 29.925 },
+      { validFrom: "2026-07-28T16:30:00+01:00", validTo: "2026-07-28T17:00:00+01:00", pricePencePerKwh: 31.5 }
     ]);
   });
 
@@ -30,7 +30,7 @@ describe("Octopus Agile electricity provider", () => {
     };
 
     expect(normalizeAgilePrices(payload, NOW)).toEqual([
-      { validFrom: "2026-07-28T15:30:00Z", validTo: "2026-07-28T16:00:00Z", pricePencePerKwh: 31.5 }
+      { validFrom: "2026-07-28T16:30:00+01:00", validTo: "2026-07-28T17:00:00+01:00", pricePencePerKwh: 31.5 }
     ]);
   });
 

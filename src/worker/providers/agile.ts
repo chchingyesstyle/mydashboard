@@ -1,4 +1,5 @@
 import type { ElectricityPriceSlot } from "../../shared/contracts";
+import { toLondonIso } from "../time";
 
 const AGILE_RATES_URL =
   "https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/";
@@ -35,8 +36,13 @@ export function normalizeAgilePrices(
       return [{ validFrom, validTo, pricePencePerKwh: price }];
     })
     .filter((slot) => Date.parse(slot.validTo) > now.getTime())
-    .sort((first, second) => first.validFrom.localeCompare(second.validFrom))
-    .slice(0, 24);
+    .sort((first, second) => Date.parse(first.validFrom) - Date.parse(second.validFrom))
+    .slice(0, 24)
+    .map((slot) => ({
+      validFrom: toLondonIso(slot.validFrom),
+      validTo: toLondonIso(slot.validTo),
+      pricePencePerKwh: slot.pricePencePerKwh
+    }));
 }
 
 export async function fetchAgilePrices(

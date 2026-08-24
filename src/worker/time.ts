@@ -62,3 +62,29 @@ export function resolveLondonDeparture(time: string, generatedAt: string): strin
   });
   return candidates[0].timestamp;
 }
+
+const londonInstant = new Intl.DateTimeFormat("en-GB", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Europe/London"
+});
+
+export function toLondonIso(utcIso: string): string {
+  const instant = new Date(utcIso);
+  const parts = Object.fromEntries(
+    londonInstant
+      .formatToParts(instant)
+      .filter(({ type }) => type !== "literal")
+      .map(({ type, value }) => [type, value])
+  );
+  const offset = londonOffset
+    .formatToParts(instant)
+    .find(({ type }) => type === "timeZoneName")?.value;
+  const offsetSuffix = offset === "GMT" ? "+00:00" : offset?.replace("GMT", "") ?? "+00:00";
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offsetSuffix}`;
+}
