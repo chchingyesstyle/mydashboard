@@ -15,6 +15,12 @@ sea-level pressure for the departure station. On landscape and tablet screens,
 departures and weather appear side by side; on phones, weather moves above
 departures without horizontal scrolling.
 
+A companion firmware project in [`firmware/e1001/`](firmware/e1001/README.md)
+runs this same public API on a battery-powered Seeed reTerminal E1001 ePaper
+display, adding a two-column departures/weather/electricity-price layout
+suited to a small always-on screen. See that directory's own README for
+building and flashing it.
+
 ## Local development
 
 Install the locked dependencies and start Vite:
@@ -57,6 +63,10 @@ npx playwright install chromium
   minutes per route. RTT failures never remove Darwin departures.
 - Weather comes from [Open-Meteo](https://open-meteo.com/). The request uses
   fixed coordinates for the selected origin and is cached for 10 minutes.
+- Electricity prices come from [Octopus Energy's](https://octopus.energy/)
+  public Agile tariff API (no authentication required) for tariff
+  `E-1R-AGILE-24-10-01-A`, cached for 30 minutes. This panel is API-only — the
+  browser dashboard does not display it; it exists for the E1001 firmware.
 
 Rail data is provided by National Rail. Weather data is provided by Open-Meteo.
 The same attribution appears in the dashboard footer.
@@ -75,14 +85,22 @@ The request without a `route` query defaults to `WFJ-EUS`. Empty, repeated, or
 unsupported route values return `400 Bad Request`.
 
 The versioned response has stable, provider-neutral fields, ISO 8601
-timestamps, compact status enums, CORS support, and independent `departures`
-and `weather` panels. It is suitable for a future Seeed Studio reTerminal E1001
-ESP32 client without scraping HTML.
+timestamps, compact status enums, CORS support, and independent `departures`,
+`weather`, and `electricity` panels. It is what the
+[`firmware/e1001/`](firmware/e1001/README.md) Seeed Studio reTerminal E1001
+ESP32 client polls, without scraping HTML.
 
 `weather.pressureMslHpa` is the current mean sea-level pressure in
 hectopascals. It is numeric when supplied by Open-Meteo and `null` when that
 single measurement is unavailable. This additive field does not change the
 response `version`, which remains `1`.
+
+`electricity` is an independent panel (same `status`/`updatedAt`/`stale`/
+`error` shape as `departures` and `weather`) holding up to 24 upcoming
+half-hour Octopus Agile price slots as `prices: { validFrom, validTo,
+pricePencePerKwh }[]`, with times already converted to Europe/London local
+time. It does not affect the top-level `status`, which is still computed from
+`departures` and `weather` only. This is also an additive field.
 
 Responses include an `ETag`. A device should retain it and use a conditional
 request on its next poll:
@@ -124,6 +142,9 @@ subscribed gateway only in the `x-apikey` header. Do not put the key in
 separate Darwin Consumer secret is not used. The Worker exchanges
 `RTT_API_TOKEN` for a short-lived access token and never exposes either RTT
 token publicly.
+
+The Octopus Agile electricity provider needs no secret or Worker binding — its
+tariff endpoint is public and unauthenticated.
 
 Then deploy:
 

@@ -11,7 +11,7 @@ These instructions apply to the entire repository.
   `WFJ-EUS` and London Euston for `EUS-WFJ`. Keep forecasts limited to the
   approved current conditions, today's minimum and maximum temperatures, and
   next-six-hour rain chance.
-- Keep the public `/api/v1/dashboard` response suitable for both the web frontend and a future Seeed Studio reTerminal E1001 ESP32 client.
+- Keep the public `/api/v1/dashboard` response suitable for both the web frontend and the `firmware/e1001/` Seeed Studio reTerminal E1001 ESP32 client.
 - Treat `docs/superpowers/specs/2026-07-28-watford-euston-dashboard-design.md`
   as the base product specification and
   `docs/superpowers/specs/2026-07-28-darwin-pressure-accessibility-design.md`
@@ -19,7 +19,10 @@ These instructions apply to the entire repository.
   `docs/superpowers/specs/2026-07-28-pressure-two-decimal-design.md` as the
   current pressure-presentation requirement. Treat
   `docs/superpowers/specs/2026-07-29-bidirectional-route-switch-design.md` as
-  the current route and origin-weather extension.
+  the current route and origin-weather extension. Treat
+  `docs/superpowers/specs/2026-08-24-e1001-firmware-dashboard-design.md` and
+  `docs/superpowers/specs/2026-08-24-e1001-two-column-agile-design.md` as the
+  current specification for the `firmware/e1001/` reTerminal E1001 client.
 
 ## Architecture and Data
 
@@ -37,8 +40,17 @@ These instructions apply to the entire repository.
 - Display mean sea-level pressure with exactly two decimal places in the web
   dashboard, for example `1016.80 hPa`, while keeping
   `weather.pressureMslHpa` numeric or `null` in the public API.
+- Use Octopus Energy's public Agile tariff API (`E-1R-AGILE-24-10-01-A`, no
+  authentication required) to populate the `electricity` panel. Convert its
+  UTC timestamps to Europe/London local time before returning them, matching
+  how departure times are already presented. This panel does not affect the
+  top-level `status` roll-up and is not shown in the browser UI.
 - Preserve the versioned `/api/v1/dashboard` contract unless an explicit requirement calls for a breaking change.
-- Do not build ESP32 firmware unless explicitly requested. Maintain compatibility through compact JSON, stable enums, ISO 8601 timestamps, `ETag`, and CORS support.
+- The `firmware/e1001/` reTerminal E1001 client now exists (PlatformIO/C++,
+  see its own README). Treat further ESP32 firmware changes as in scope
+  there; still do not start unrelated new firmware/device work without it
+  being explicitly requested. Maintain the API's compact JSON, stable enums,
+  ISO 8601 timestamps, `ETag`, and CORS support for its sake.
 
 ## Security and Deployment
 
