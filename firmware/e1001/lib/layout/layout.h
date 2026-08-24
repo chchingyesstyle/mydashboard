@@ -24,6 +24,7 @@ struct DepartureRow {
 struct ElectricityRow {
   std::string time;
   std::string priceText;
+  bool belowAverage;
 };
 
 struct LayoutResult {

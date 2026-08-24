@@ -100,6 +100,9 @@ void drawElectricity(const LayoutResult& layout) {
   display.print("Electricity (8h)");
 
   display.setFont(&FreeSans9pt7b);
+  display.setCursor(kColumnDividerX + 200, headingY);
+  display.print("*below avg");
+
   const int leftColumnX = kColumnDividerX + 10;
   const int rightColumnX = kColumnDividerX + 165;
   const int rowStep = 24;
@@ -112,7 +115,8 @@ void drawElectricity(const LayoutResult& layout) {
     display.setCursor(columnX, y);
     display.print(row.time.c_str());
     display.setCursor(columnX + 60, y);
-    display.print(row.priceText.c_str());
+    std::string priceText = row.belowAverage ? ("*" + row.priceText) : row.priceText;
+    display.print(priceText.c_str());
   }
 }
 

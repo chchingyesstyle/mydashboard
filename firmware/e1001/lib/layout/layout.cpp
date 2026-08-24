@@ -51,7 +51,7 @@ std::string formatPrice(double pricePencePerKwh) {
 
 void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::string>& lines) {
   if (weather.hasApparentTemperatureC) {
-    lines.push_back("Feels like " + formatWholeNumber(weather.apparentTemperatureC) + "C");
+    lines.push_back("Feels like " + formatOneDecimal(weather.apparentTemperatureC) + "C");
   }
   if (weather.hasRelativeHumidityPercent) {
     lines.push_back("Humidity " + formatWholeNumber(weather.relativeHumidityPercent) + "%");
@@ -131,12 +131,22 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
   }
 
   int electricityCount = static_cast<int>(model.electricity.prices.size());
+  double averagePrice = 0.0;
+  if (electricityCount > 0) {
+    double total = 0.0;
+    for (const auto& slot : model.electricity.prices) {
+      total += slot.pricePencePerKwh;
+    }
+    averagePrice = total / electricityCount;
+  }
+
   int electricityRowsToRender = electricityCount < 16 ? electricityCount : 16;
   for (int i = 0; i < electricityRowsToRender; i++) {
     const ElectricityPriceSlot& slot = model.electricity.prices[i];
     ElectricityRow row;
     row.time = extractTimeOfDay(slot.validFrom);
     row.priceText = formatPrice(slot.pricePencePerKwh);
+    row.belowAverage = slot.pricePencePerKwh < averagePrice;
     layout.electricityRows.push_back(row);
   }
 

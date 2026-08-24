@@ -148,7 +148,7 @@ void test_weather_detail_lines_include_only_present_fields() {
   LayoutResult layout = computeLayout(model, kMaxRows);
 
   TEST_ASSERT_EQUAL(3, (int)layout.weatherDetailLines.size());
-  TEST_ASSERT_EQUAL_STRING("Feels like 11C", layout.weatherDetailLines[0].c_str());
+  TEST_ASSERT_EQUAL_STRING("Feels like 11.1C", layout.weatherDetailLines[0].c_str());
   TEST_ASSERT_EQUAL_STRING("Humidity 63%", layout.weatherDetailLines[1].c_str());
   TEST_ASSERT_EQUAL_STRING("Rain (6h) 20%", layout.weatherDetailLines[2].c_str());
 }
@@ -214,6 +214,26 @@ void test_electricity_rows_capped_at_sixteen_slots() {
   TEST_ASSERT_EQUAL_STRING("35.00p", layout.electricityRows[15].priceText.c_str());
 }
 
+void test_electricity_rows_flag_below_average_price() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  const double prices[] = {10.0, 20.0, 30.0};
+  for (double price : prices) {
+    ElectricityPriceSlot slot;
+    slot.validFrom = "2026-08-24T08:00:00+01:00";
+    slot.validTo = "2026-08-24T08:30:00+01:00";
+    slot.pricePencePerKwh = price;
+    model.electricity.prices.push_back(slot);
+  }
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  // Average is 20.0: only the 10.0 slot is strictly below it.
+  TEST_ASSERT_TRUE(layout.electricityRows[0].belowAverage);
+  TEST_ASSERT_FALSE(layout.electricityRows[1].belowAverage);
+  TEST_ASSERT_FALSE(layout.electricityRows[2].belowAverage);
+}
+
 void test_battery_percent_defaults_to_hidden_and_can_be_set() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
@@ -250,6 +270,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_pressure_and_today_min_max_lines);
   RUN_TEST(test_today_min_max_line_omitted_when_either_missing);
   RUN_TEST(test_electricity_rows_capped_at_sixteen_slots);
+  RUN_TEST(test_electricity_rows_flag_below_average_price);
   RUN_TEST(test_battery_percent_defaults_to_hidden_and_can_be_set);
   RUN_TEST(test_battery_percent_from_voltage_matches_calibration_points);
   RUN_TEST(test_battery_percent_from_voltage_interpolates_between_points);
