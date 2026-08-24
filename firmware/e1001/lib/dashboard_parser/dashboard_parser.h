@@ -12,6 +12,7 @@ struct ParsedDeparture {
   bool hasPlatform;
   std::string platform;
   std::string operatorName;
+  std::string operatorCode;
   bool hasCoachCount;
   int coachCount;
   bool isCancelled;
@@ -34,6 +35,16 @@ struct WeatherPanel {
   double temperatureC;
   bool hasCondition;
   std::string condition;
+  bool hasApparentTemperatureC;
+  double apparentTemperatureC;
+  bool hasRelativeHumidityPercent;
+  double relativeHumidityPercent;
+  bool hasPrecipitationMm;
+  double precipitationMm;
+  bool hasRainChanceNext6HoursPercent;
+  double rainChanceNext6HoursPercent;
+  bool hasPressureMslHpa;
+  double pressureMslHpa;
 };
 
 struct DashboardModel {

@@ -162,11 +162,104 @@ void test_parses_stale_and_unavailable_panel_statuses() {
   TEST_ASSERT_FALSE(result.model.weather.hasCondition);
 }
 
+void test_parses_operator_code_and_extended_weather_fields() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "services": [
+        {
+          "id": "abc123",
+          "scheduledDeparture": "2026-08-24T08:47:00+01:00",
+          "expectedDeparture": "2026-08-24T08:47:00+01:00",
+          "expectedDisplay": "On time",
+          "platform": "9",
+          "platformStatus": "live",
+          "operator": "London Northwestern Railway",
+          "operatorCode": "LM",
+          "finalDestination": null,
+          "coachCount": 8,
+          "status": "on_time",
+          "isCancelled": false,
+          "reason": null
+        }
+      ],
+      "error": null
+    },
+    "weather": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "temperatureC": 12.4,
+      "condition": "Partly cloudy",
+      "apparentTemperatureC": 11.1,
+      "relativeHumidityPercent": 63,
+      "precipitationMm": 0,
+      "rainChanceNext6HoursPercent": 20,
+      "pressureMslHpa": 1016.4,
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_EQUAL_STRING("LM", result.model.departures.services[0].operatorCode.c_str());
+
+  const WeatherPanel& weather = result.model.weather;
+  TEST_ASSERT_TRUE(weather.hasApparentTemperatureC);
+  TEST_ASSERT_EQUAL_FLOAT(11.1, weather.apparentTemperatureC);
+  TEST_ASSERT_TRUE(weather.hasRelativeHumidityPercent);
+  TEST_ASSERT_EQUAL_FLOAT(63, weather.relativeHumidityPercent);
+  TEST_ASSERT_TRUE(weather.hasPrecipitationMm);
+  TEST_ASSERT_EQUAL_FLOAT(0, weather.precipitationMm);
+  TEST_ASSERT_TRUE(weather.hasRainChanceNext6HoursPercent);
+  TEST_ASSERT_EQUAL_FLOAT(20, weather.rainChanceNext6HoursPercent);
+  TEST_ASSERT_TRUE(weather.hasPressureMslHpa);
+  TEST_ASSERT_EQUAL_FLOAT(1016.4, weather.pressureMslHpa);
+}
+
+void test_extended_weather_fields_absent_when_null() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "partial",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "temperatureC": 12.4,
+      "condition": "Partly cloudy",
+      "apparentTemperatureC": 11.1,
+      "relativeHumidityPercent": 63,
+      "precipitationMm": 0,
+      "rainChanceNext6HoursPercent": null,
+      "pressureMslHpa": null,
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_FALSE(result.model.weather.hasRainChanceNext6HoursPercent);
+  TEST_ASSERT_FALSE(result.model.weather.hasPressureMslHpa);
+}
+
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_parses_live_departure_with_all_fields);
   RUN_TEST(test_handles_null_platform_null_coach_count_and_cancelled_service);
   RUN_TEST(test_parses_weather_panel_and_dashboard_status);
   RUN_TEST(test_parses_stale_and_unavailable_panel_statuses);
+  RUN_TEST(test_parses_operator_code_and_extended_weather_fields);
+  RUN_TEST(test_extended_weather_fields_absent_when_null);
   return UNITY_END();
 }

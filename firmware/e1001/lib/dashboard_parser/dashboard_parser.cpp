@@ -36,6 +36,7 @@ void parseDeparturesPanel(JsonObject departuresJson, DeparturesPanel& departures
     departure.scheduledDeparture = std::string(service["scheduledDeparture"] | "");
     departure.expectedDisplay = std::string(service["expectedDisplay"] | "");
     departure.operatorName = std::string(service["operator"] | "");
+    departure.operatorCode = std::string(service["operatorCode"] | "");
     departure.isCancelled = service["isCancelled"] | false;
 
     if (service["platform"].is<const char*>()) {
@@ -79,6 +80,41 @@ void parseWeatherPanel(JsonObject weatherJson, WeatherPanel& weather) {
     weather.condition = weatherJson["condition"].as<const char*>();
   } else {
     weather.hasCondition = false;
+  }
+
+  if (weatherJson["apparentTemperatureC"].is<double>()) {
+    weather.hasApparentTemperatureC = true;
+    weather.apparentTemperatureC = weatherJson["apparentTemperatureC"].as<double>();
+  } else {
+    weather.hasApparentTemperatureC = false;
+  }
+
+  if (weatherJson["relativeHumidityPercent"].is<double>()) {
+    weather.hasRelativeHumidityPercent = true;
+    weather.relativeHumidityPercent = weatherJson["relativeHumidityPercent"].as<double>();
+  } else {
+    weather.hasRelativeHumidityPercent = false;
+  }
+
+  if (weatherJson["precipitationMm"].is<double>()) {
+    weather.hasPrecipitationMm = true;
+    weather.precipitationMm = weatherJson["precipitationMm"].as<double>();
+  } else {
+    weather.hasPrecipitationMm = false;
+  }
+
+  if (weatherJson["rainChanceNext6HoursPercent"].is<double>()) {
+    weather.hasRainChanceNext6HoursPercent = true;
+    weather.rainChanceNext6HoursPercent = weatherJson["rainChanceNext6HoursPercent"].as<double>();
+  } else {
+    weather.hasRainChanceNext6HoursPercent = false;
+  }
+
+  if (weatherJson["pressureMslHpa"].is<double>()) {
+    weather.hasPressureMslHpa = true;
+    weather.pressureMslHpa = weatherJson["pressureMslHpa"].as<double>();
+  } else {
+    weather.hasPressureMslHpa = false;
   }
 }
 
