@@ -53,6 +53,13 @@ void parseDeparturesPanel(JsonObject departuresJson, DeparturesPanel& departures
       departure.hasCoachCount = false;
     }
 
+    if (service["reason"].is<const char*>()) {
+      departure.hasReason = true;
+      departure.reason = service["reason"].as<const char*>();
+    } else {
+      departure.hasReason = false;
+    }
+
     departures.services.push_back(departure);
   }
 }

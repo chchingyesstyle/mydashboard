@@ -16,6 +16,8 @@ struct ParsedDeparture {
   bool hasCoachCount;
   int coachCount;
   bool isCancelled;
+  bool hasReason;
+  std::string reason;
 };
 
 struct DeparturesPanel {

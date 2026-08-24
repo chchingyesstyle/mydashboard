@@ -65,6 +65,7 @@ void test_parses_live_departure_with_all_fields() {
   TEST_ASSERT_TRUE(departure.hasCoachCount);
   TEST_ASSERT_EQUAL(8, departure.coachCount);
   TEST_ASSERT_FALSE(departure.isCancelled);
+  TEST_ASSERT_FALSE(departure.hasReason);
 }
 
 void test_handles_null_platform_null_coach_count_and_cancelled_service() {
@@ -123,6 +124,10 @@ void test_handles_null_platform_null_coach_count_and_cancelled_service() {
   TEST_ASSERT_FALSE(departure.hasCoachCount);
   TEST_ASSERT_TRUE(departure.isCancelled);
   TEST_ASSERT_EQUAL_STRING("Cancelled", departure.expectedDisplay.c_str());
+  TEST_ASSERT_TRUE(departure.hasReason);
+  TEST_ASSERT_EQUAL_STRING(
+      "This service has been cancelled because of a shortage of train crew",
+      departure.reason.c_str());
 }
 
 void test_parses_weather_panel_and_dashboard_status() {
