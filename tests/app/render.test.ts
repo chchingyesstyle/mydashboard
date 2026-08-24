@@ -82,6 +82,13 @@ const livePayload: DashboardPayload = {
     windDirectionDegrees: 240,
     pressureMslHpa: 1016.4,
     error: null
+  },
+  electricity: {
+    status: "live",
+    updatedAt: "2026-07-28T12:00:00.000Z",
+    stale: false,
+    prices: [],
+    error: null
   }
 };
 

@@ -38,6 +38,13 @@ const payload: DashboardPayload = {
     windDirectionDegrees: null,
     pressureMslHpa: null,
     error: "Current weather is temporarily unavailable."
+  },
+  electricity: {
+    status: "unavailable",
+    updatedAt: null,
+    stale: false,
+    prices: [],
+    error: "Electricity prices are temporarily unavailable."
   }
 };
 

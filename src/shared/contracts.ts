@@ -48,6 +48,20 @@ export interface WeatherPanel {
   error: string | null;
 }
 
+export interface ElectricityPriceSlot {
+  validFrom: string;
+  validTo: string;
+  pricePencePerKwh: number;
+}
+
+export interface ElectricityPanel {
+  status: PanelStatus;
+  updatedAt: string | null;
+  stale: boolean;
+  prices: ElectricityPriceSlot[];
+  error: string | null;
+}
+
 export interface DashboardPayload {
   version: 1;
   generatedAt: string;
@@ -58,6 +72,7 @@ export interface DashboardPayload {
   };
   departures: DeparturesPanel;
   weather: WeatherPanel;
+  electricity: ElectricityPanel;
 }
 
 export const ROUTES = {
