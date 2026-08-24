@@ -5,7 +5,7 @@
 
 #include "dashboard_parser.h"
 
-constexpr int kMaxRows = 6;
+constexpr int kMaxRows = 8;
 
 enum class RowEmphasis { Normal, Delayed, Cancelled };
 
@@ -19,11 +19,18 @@ struct DepartureRow {
   RowEmphasis emphasis;
 };
 
+struct ElectricityRow {
+  std::string time;
+  std::string priceText;
+};
+
 struct LayoutResult {
   std::string statusBannerText;
   bool hasWeatherText;
   std::string weatherText;
+  std::vector<std::string> weatherDetailLines;
   std::vector<DepartureRow> rows;
+  std::vector<ElectricityRow> electricityRows;
 };
 
 LayoutResult computeLayout(const DashboardModel& model, int maxRows);
