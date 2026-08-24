@@ -1,5 +1,10 @@
 # reTerminal E1001 SenseCraft HMI Dashboard Design
 
+> **Superseded.** The E1001 approach changed to custom Arduino firmware for
+> full parity with the web dashboard. See
+> `docs/superpowers/specs/2026-08-24-e1001-firmware-dashboard-design.md`.
+> This document is kept for history only.
+
 ## Purpose
 
 Display the Watford Junction to Euston live dashboard on a Seeed Studio
