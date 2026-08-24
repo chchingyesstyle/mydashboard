@@ -1,4 +1,5 @@
 #include <unity.h>
+#include <cstdio>
 #include "layout.h"
 
 namespace {
@@ -9,7 +10,9 @@ ParsedDeparture makeDeparture(const std::string& scheduledDeparture,
                                const std::string& platform,
                                bool hasCoachCount,
                                int coachCount,
-                               bool isCancelled) {
+                               bool isCancelled,
+                               bool hasReason = false,
+                               const std::string& reason = "") {
   ParsedDeparture departure;
   departure.scheduledDeparture = scheduledDeparture;
   departure.expectedDisplay = expectedDisplay;
@@ -20,6 +23,8 @@ ParsedDeparture makeDeparture(const std::string& scheduledDeparture,
   departure.hasCoachCount = hasCoachCount;
   departure.coachCount = coachCount;
   departure.isCancelled = isCancelled;
+  departure.hasReason = hasReason;
+  departure.reason = reason;
   return departure;
 }
 
@@ -37,17 +42,19 @@ void test_extracts_time_of_day_and_platform_text() {
   TEST_ASSERT_EQUAL_STRING("08:47", layout.rows[0].time.c_str());
   TEST_ASSERT_EQUAL_STRING("On time", layout.rows[0].statusText.c_str());
   TEST_ASSERT_EQUAL_STRING("Platform 9", layout.rows[0].platformText.c_str());
-  TEST_ASSERT_EQUAL_STRING("LM", layout.rows[0].operatorText.c_str());
+  TEST_ASSERT_EQUAL_STRING("London Northwestern Railway", layout.rows[0].operatorText.c_str());
   TEST_ASSERT_TRUE(layout.rows[0].hasCoachText);
-  TEST_ASSERT_EQUAL_STRING("8coa", layout.rows[0].coachText.c_str());
+  TEST_ASSERT_EQUAL_STRING("8 coaches", layout.rows[0].coachText.c_str());
   TEST_ASSERT_TRUE(layout.rows[0].emphasis == RowEmphasis::Normal);
+  TEST_ASSERT_FALSE(layout.rows[0].hasReason);
 }
 
 void test_null_platform_and_coach_count_produce_fallback_text() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
   model.departures.services.push_back(
-      makeDeparture("2026-08-24T09:17:00+01:00", "Cancelled", false, "", false, 0, true));
+      makeDeparture("2026-08-24T09:17:00+01:00", "Cancelled", false, "", false, 0, true, true,
+                    "This service has been cancelled because of a shortage of train crew"));
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
@@ -55,6 +62,10 @@ void test_null_platform_and_coach_count_produce_fallback_text() {
   TEST_ASSERT_EQUAL_STRING("Platform TBC", layout.rows[0].platformText.c_str());
   TEST_ASSERT_FALSE(layout.rows[0].hasCoachText);
   TEST_ASSERT_TRUE(layout.rows[0].emphasis == RowEmphasis::Cancelled);
+  TEST_ASSERT_TRUE(layout.rows[0].hasReason);
+  TEST_ASSERT_EQUAL_STRING(
+      "This service has been cancelled because of a shortage of train crew",
+      layout.rows[0].reasonText.c_str());
 }
 
 void test_delayed_departure_gets_delayed_emphasis() {
@@ -140,29 +151,27 @@ void test_weather_detail_lines_include_only_present_fields() {
   TEST_ASSERT_EQUAL_STRING("Rain (6h) 20%", layout.weatherDetailLines[2].c_str());
 }
 
-void test_electricity_rows_capped_at_six_slots() {
+void test_electricity_rows_capped_at_sixteen_slots() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
-  const char* starts[] = {
-    "2026-08-24T08:00:00Z", "2026-08-24T08:30:00Z", "2026-08-24T09:00:00Z",
-    "2026-08-24T09:30:00Z", "2026-08-24T10:00:00Z", "2026-08-24T10:30:00Z",
-    "2026-08-24T11:00:00Z"
-  };
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < 17; i++) {
+    char timestamp[32];
+    snprintf(timestamp, sizeof(timestamp), "2026-08-24T%02d:%02d:00+01:00",
+             8 + (i / 2), (i % 2) * 30);
     ElectricityPriceSlot slot;
-    slot.validFrom = starts[i];
-    slot.validTo = starts[i];
+    slot.validFrom = timestamp;
+    slot.validTo = timestamp;
     slot.pricePencePerKwh = 20.0 + i;
     model.electricity.prices.push_back(slot);
   }
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  TEST_ASSERT_EQUAL(6, (int)layout.electricityRows.size());
+  TEST_ASSERT_EQUAL(16, (int)layout.electricityRows.size());
   TEST_ASSERT_EQUAL_STRING("08:00", layout.electricityRows[0].time.c_str());
   TEST_ASSERT_EQUAL_STRING("20.0p", layout.electricityRows[0].priceText.c_str());
-  TEST_ASSERT_EQUAL_STRING("10:30", layout.electricityRows[5].time.c_str());
-  TEST_ASSERT_EQUAL_STRING("25.0p", layout.electricityRows[5].priceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("15:30", layout.electricityRows[15].time.c_str());
+  TEST_ASSERT_EQUAL_STRING("35.0p", layout.electricityRows[15].priceText.c_str());
 }
 
 int main(int argc, char **argv) {
@@ -175,6 +184,6 @@ int main(int argc, char **argv) {
   RUN_TEST(test_status_banner_text_for_each_dashboard_status);
   RUN_TEST(test_weather_text_formatting_and_missing_weather);
   RUN_TEST(test_weather_detail_lines_include_only_present_fields);
-  RUN_TEST(test_electricity_rows_capped_at_six_slots);
+  RUN_TEST(test_electricity_rows_capped_at_sixteen_slots);
   return UNITY_END();
 }

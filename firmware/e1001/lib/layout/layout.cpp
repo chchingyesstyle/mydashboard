@@ -78,17 +78,21 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows) {
     row.time = extractTimeOfDay(departure.scheduledDeparture);
     row.statusText = departure.expectedDisplay;
     row.platformText = departure.hasPlatform ? ("Platform " + departure.platform) : "Platform TBC";
-    row.operatorText = departure.operatorCode;
+    row.operatorText = departure.operatorName;
     row.hasCoachText = departure.hasCoachCount;
     if (row.hasCoachText) {
-      row.coachText = std::to_string(departure.coachCount) + "coa";
+      row.coachText = std::to_string(departure.coachCount) + " coaches";
     }
     row.emphasis = emphasisFor(departure);
+    row.hasReason = departure.hasReason;
+    if (row.hasReason) {
+      row.reasonText = departure.reason;
+    }
     layout.rows.push_back(row);
   }
 
   int electricityCount = static_cast<int>(model.electricity.prices.size());
-  int electricityRowsToRender = electricityCount < 6 ? electricityCount : 6;
+  int electricityRowsToRender = electricityCount < 16 ? electricityCount : 16;
   for (int i = 0; i < electricityRowsToRender; i++) {
     const ElectricityPriceSlot& slot = model.electricity.prices[i];
     ElectricityRow row;

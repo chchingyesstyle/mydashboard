@@ -17,6 +17,8 @@ struct DepartureRow {
   bool hasCoachText;
   std::string coachText;
   RowEmphasis emphasis;
+  bool hasReason;
+  std::string reasonText;
 };
 
 struct ElectricityRow {
