@@ -102,13 +102,23 @@ export function normalizeDarwin(
   if (
     !generatedAt ||
     !isIsoTimestamp(generatedAt) ||
-    stringValue(board.filtercrs) !== destinationCrs ||
-    !Array.isArray(board.trainServices)
+    stringValue(board.filtercrs) !== destinationCrs
   ) {
     malformedResponse();
   }
 
-  return board.trainServices
+  // Darwin omits trainServices entirely (rather than returning an empty
+  // array) during a genuine overnight service gap. Only a present-but-wrong
+  // type indicates an actually malformed response.
+  const trainServices = board.trainServices;
+  if (trainServices === undefined || trainServices === null) {
+    return [];
+  }
+  if (!Array.isArray(trainServices)) {
+    malformedResponse();
+  }
+
+  return trainServices
     .filter((service): service is DarwinService => typeof service === "object" && service !== null)
     .map((service) => departureFrom(service, generatedAt))
     .sort((first, second) => first.scheduledDeparture.localeCompare(second.scheduledDeparture));

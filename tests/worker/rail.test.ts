@@ -116,6 +116,33 @@ describe("Darwin rail provider", () => {
     });
   });
 
+  it("returns an empty list when Darwin omits trainServices for an overnight service gap", () => {
+    const { trainServices: _trainServices, ...boardWithoutServices } = darwinFixture;
+
+    const services = normalizeDarwin(
+      boardWithoutServices,
+      ROUTES["WFJ-EUS"].destination.crs
+    );
+
+    expect(services).toEqual([]);
+  });
+
+  it("returns an empty list when Darwin sends a null trainServices", () => {
+    const services = normalizeDarwin(
+      { ...darwinFixture, trainServices: null },
+      ROUTES["WFJ-EUS"].destination.crs
+    );
+
+    expect(services).toEqual([]);
+  });
+
+  it("rejects a trainServices value that is present but not an array", () => {
+    expect(() => normalizeDarwin(
+      { ...darwinFixture, trainServices: "not-an-array" },
+      ROUTES["WFJ-EUS"].destination.crs
+    )).toThrow("Darwin departures response was malformed");
+  });
+
   it("rejects a Darwin board filtered to a different destination", () => {
     expect(() => normalizeDarwin(
       { ...reverseDarwinFixture, filtercrs: "EUS" },
