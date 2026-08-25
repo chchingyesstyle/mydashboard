@@ -65,6 +65,8 @@ struct ElectricityPanel {
   bool hasUpdatedAt;
   std::string updatedAt;
   std::vector<ElectricityPriceSlot> prices;
+  bool hasTodayAveragePencePerKwh;
+  double todayAveragePencePerKwh;
 };
 
 struct DashboardModel {

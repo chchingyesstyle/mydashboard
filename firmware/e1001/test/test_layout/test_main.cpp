@@ -194,6 +194,7 @@ void test_today_min_max_line_omitted_when_either_missing() {
 void test_electricity_rows_capped_at_sixteen_slots() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
+  model.electricity.hasTodayAveragePencePerKwh = false;
   for (int i = 0; i < 17; i++) {
     char timestamp[32];
     snprintf(timestamp, sizeof(timestamp), "2026-08-24T%02d:%02d:00+01:00",
@@ -217,6 +218,8 @@ void test_electricity_rows_capped_at_sixteen_slots() {
 void test_electricity_rows_flag_below_average_price() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
+  model.electricity.hasTodayAveragePencePerKwh = true;
+  model.electricity.todayAveragePencePerKwh = 20.0;
   const double prices[] = {10.0, 20.0, 30.0};
   for (double price : prices) {
     ElectricityPriceSlot slot;
@@ -228,8 +231,30 @@ void test_electricity_rows_flag_below_average_price() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  // Average is 20.0: only the 10.0 slot is strictly below it.
+  // Today's average is 20.0: only the 10.0 slot is strictly below it.
   TEST_ASSERT_TRUE(layout.electricityRows[0].belowAverage);
+  TEST_ASSERT_FALSE(layout.electricityRows[1].belowAverage);
+  TEST_ASSERT_FALSE(layout.electricityRows[2].belowAverage);
+}
+
+void test_electricity_rows_never_flagged_when_average_unavailable() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.electricity.hasTodayAveragePencePerKwh = false;
+  const double prices[] = {10.0, 20.0, 30.0};
+  for (double price : prices) {
+    ElectricityPriceSlot slot;
+    slot.validFrom = "2026-08-24T08:00:00+01:00";
+    slot.validTo = "2026-08-24T08:30:00+01:00";
+    slot.pricePencePerKwh = price;
+    model.electricity.prices.push_back(slot);
+  }
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  // Without a server-provided average, nothing should be flagged, even
+  // though the cheapest slot would be "below" a locally-computed average.
+  TEST_ASSERT_FALSE(layout.electricityRows[0].belowAverage);
   TEST_ASSERT_FALSE(layout.electricityRows[1].belowAverage);
   TEST_ASSERT_FALSE(layout.electricityRows[2].belowAverage);
 }
@@ -280,6 +305,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_today_min_max_line_omitted_when_either_missing);
   RUN_TEST(test_electricity_rows_capped_at_sixteen_slots);
   RUN_TEST(test_electricity_rows_flag_below_average_price);
+  RUN_TEST(test_electricity_rows_never_flagged_when_average_unavailable);
   RUN_TEST(test_battery_percent_defaults_to_hidden_and_can_be_set);
   RUN_TEST(test_last_refresh_text_defaults_empty_and_can_be_set);
   RUN_TEST(test_battery_percent_from_voltage_matches_calibration_points);

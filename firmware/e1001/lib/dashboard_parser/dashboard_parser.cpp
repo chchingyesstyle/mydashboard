@@ -162,6 +162,13 @@ void parseElectricityPanel(JsonObject electricityJson, ElectricityPanel& electri
     priceSlot.pricePencePerKwh = slot["pricePencePerKwh"].as<double>();
     electricity.prices.push_back(priceSlot);
   }
+
+  if (electricityJson["todayAveragePencePerKwh"].is<double>()) {
+    electricity.hasTodayAveragePencePerKwh = true;
+    electricity.todayAveragePencePerKwh = electricityJson["todayAveragePencePerKwh"].as<double>();
+  } else {
+    electricity.hasTodayAveragePencePerKwh = false;
+  }
 }
 
 }  // namespace

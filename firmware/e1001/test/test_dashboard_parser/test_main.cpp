@@ -316,6 +316,7 @@ void test_parses_electricity_panel_skipping_malformed_slots() {
         {"validFrom": "2026-08-24T08:00:00Z", "validTo": "2026-08-24T08:30:00Z", "pricePencePerKwh": 20.5},
         {"validFrom": "2026-08-24T08:30:00Z", "validTo": "2026-08-24T09:00:00Z", "pricePencePerKwh": null}
       ],
+      "todayAveragePencePerKwh": 29.14,
       "error": null
     }
   })";
@@ -327,6 +328,32 @@ void test_parses_electricity_panel_skipping_malformed_slots() {
   TEST_ASSERT_EQUAL(1, (int)result.model.electricity.prices.size());
   TEST_ASSERT_EQUAL_STRING("2026-08-24T08:00:00Z", result.model.electricity.prices[0].validFrom.c_str());
   TEST_ASSERT_EQUAL_FLOAT(20.5, result.model.electricity.prices[0].pricePencePerKwh);
+  TEST_ASSERT_TRUE(result.model.electricity.hasTodayAveragePencePerKwh);
+  TEST_ASSERT_EQUAL_FLOAT(29.14, result.model.electricity.todayAveragePencePerKwh);
+}
+
+void test_today_average_price_absent_when_null() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "temperatureC": 12.4, "condition": "Partly cloudy", "error": null},
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "todayAveragePencePerKwh": null,
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_FALSE(result.model.electricity.hasTodayAveragePencePerKwh);
 }
 
 void test_rejects_dashboard_missing_electricity_panel() {
@@ -353,6 +380,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parses_operator_code_and_extended_weather_fields);
   RUN_TEST(test_extended_weather_fields_absent_when_null);
   RUN_TEST(test_parses_electricity_panel_skipping_malformed_slots);
+  RUN_TEST(test_today_average_price_absent_when_null);
   RUN_TEST(test_rejects_dashboard_missing_electricity_panel);
   return UNITY_END();
 }
