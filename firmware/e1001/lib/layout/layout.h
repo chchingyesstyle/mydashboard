@@ -35,8 +35,10 @@ struct LayoutResult {
   std::vector<DepartureRow> rows;
   std::vector<ElectricityRow> electricityRows;
   int batteryPercent;
+  std::string lastRefreshText;
 };
 
-LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent = -1);
+LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent = -1,
+                           const std::string& lastRefreshText = "");
 
 int batteryPercentFromVoltage(double voltage);

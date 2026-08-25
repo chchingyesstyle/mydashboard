@@ -242,6 +242,15 @@ void test_battery_percent_defaults_to_hidden_and_can_be_set() {
   TEST_ASSERT_EQUAL(87, computeLayout(model, kMaxRows, 87).batteryPercent);
 }
 
+void test_last_refresh_text_defaults_empty_and_can_be_set() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+
+  TEST_ASSERT_EQUAL_STRING("", computeLayout(model, kMaxRows).lastRefreshText.c_str());
+  TEST_ASSERT_EQUAL_STRING(
+      "14:32", computeLayout(model, kMaxRows, -1, "14:32").lastRefreshText.c_str());
+}
+
 void test_battery_percent_from_voltage_matches_calibration_points() {
   TEST_ASSERT_EQUAL(0, batteryPercentFromVoltage(3.27));
   TEST_ASSERT_EQUAL(50, batteryPercentFromVoltage(3.75));
@@ -272,6 +281,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_electricity_rows_capped_at_sixteen_slots);
   RUN_TEST(test_electricity_rows_flag_below_average_price);
   RUN_TEST(test_battery_percent_defaults_to_hidden_and_can_be_set);
+  RUN_TEST(test_last_refresh_text_defaults_empty_and_can_be_set);
   RUN_TEST(test_battery_percent_from_voltage_matches_calibration_points);
   RUN_TEST(test_battery_percent_from_voltage_interpolates_between_points);
   RUN_TEST(test_battery_percent_from_voltage_clamps_out_of_range);

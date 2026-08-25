@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "battery.h"
+#include "clock.h"
 #include "dashboard_client.h"
 #include "dashboard_parser.h"
 #include "layout.h"
@@ -52,7 +53,8 @@ void setup() {
     ParseResult parsed = parseDashboard(fetch.body);
     if (parsed.ok) {
       int batteryPercent = batteryPercentFromVoltage(readBatteryVoltage());
-      LayoutResult layout = computeLayout(parsed.model, kMaxRows, batteryPercent);
+      std::string lastRefreshText = syncAndFormatLocalTime();
+      LayoutResult layout = computeLayout(parsed.model, kMaxRows, batteryPercent, lastRefreshText);
       renderDashboard(layout);
       strncpy(storedEtag, fetch.etag.c_str(), sizeof(storedEtag) - 1);
       storedEtag[sizeof(storedEtag) - 1] = '\0';

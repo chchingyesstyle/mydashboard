@@ -30,7 +30,11 @@ void drawHeader(const LayoutResult& layout) {
   display.setCursor(10, 26);
   display.print("Watford to Euston");
 
-  std::string rightText = layout.statusBannerText;
+  std::string rightText;
+  if (!layout.lastRefreshText.empty()) {
+    rightText += layout.lastRefreshText + "  ";
+  }
+  rightText += layout.statusBannerText;
   if (layout.batteryPercent >= 0) {
     rightText += "  " + std::to_string(layout.batteryPercent) + "%";
   }

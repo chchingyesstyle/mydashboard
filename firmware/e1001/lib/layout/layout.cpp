@@ -94,9 +94,11 @@ int batteryPercentFromVoltage(double voltage) {
   return 0;
 }
 
-LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent) {
+LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent,
+                           const std::string& lastRefreshText) {
   LayoutResult layout;
   layout.batteryPercent = batteryPercent;
+  layout.lastRefreshText = lastRefreshText;
   layout.statusBannerText = bannerTextFor(model.status);
 
   if (model.weather.hasTemperatureC && model.weather.hasCondition) {
