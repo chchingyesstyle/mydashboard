@@ -6,9 +6,9 @@ const NOW = new Date("2026-07-28T12:00:31.000Z");
 
 describe("Octopus Agile electricity provider", () => {
   it("returns current and future slots sorted ascending, dropping expired ones", () => {
-    const slots = normalizeAgilePrices(octopusAgileFixture, NOW);
+    const result = normalizeAgilePrices(octopusAgileFixture, NOW);
 
-    expect(slots).toEqual([
+    expect(result.prices).toEqual([
       { validFrom: "2026-07-28T13:00:00+01:00", validTo: "2026-07-28T13:30:00+01:00", pricePencePerKwh: 20.475 },
       { validFrom: "2026-07-28T13:30:00+01:00", validTo: "2026-07-28T14:00:00+01:00", pricePencePerKwh: 22.05 },
       { validFrom: "2026-07-28T14:00:00+01:00", validTo: "2026-07-28T14:30:00+01:00", pricePencePerKwh: 23.625 },
@@ -20,6 +20,27 @@ describe("Octopus Agile electricity provider", () => {
     ]);
   });
 
+  it("averages all of today's slots, including ones already elapsed", () => {
+    // All 9 fixture slots (18:30 the previous day through 16:00 today, UTC)
+    // fall within today's BST-adjusted local day (2026-07-27T23:00:00.000Z
+    // to 2026-07-28T23:00:00.000Z), so all 9 contribute to the average,
+    // not just the 8 that are still upcoming relative to NOW.
+    const result = normalizeAgilePrices(octopusAgileFixture, NOW);
+
+    expect(result.todayAveragePencePerKwh).toBeCloseTo(25.2, 10);
+  });
+
+  it("returns a null average when no slots fall within today", () => {
+    const payload = {
+      ...octopusAgileFixture,
+      results: [
+        { value_exc_vat: 30.0, value_inc_vat: 31.5, valid_from: "2026-07-30T15:30:00Z", valid_to: "2026-07-30T16:00:00Z", payment_method: null }
+      ]
+    };
+
+    expect(normalizeAgilePrices(payload, NOW).todayAveragePencePerKwh).toBeNull();
+  });
+
   it("skips a slot missing required fields but keeps the rest", () => {
     const payload = {
       ...octopusAgileFixture,
@@ -29,9 +50,12 @@ describe("Octopus Agile electricity provider", () => {
       ]
     };
 
-    expect(normalizeAgilePrices(payload, NOW)).toEqual([
+    const result = normalizeAgilePrices(payload, NOW);
+
+    expect(result.prices).toEqual([
       { validFrom: "2026-07-28T16:30:00+01:00", validTo: "2026-07-28T17:00:00+01:00", pricePencePerKwh: 31.5 }
     ]);
+    expect(result.todayAveragePencePerKwh).toBe(31.5);
   });
 
   it("rejects a response with no results array", () => {
@@ -46,7 +70,7 @@ describe("Octopus Agile electricity provider", () => {
     );
   });
 
-  it("requests the configured Agile tariff endpoint", async () => {
+  it("requests the configured Agile tariff endpoint from the start of today", async () => {
     let requestedUrl = "";
     const fetcher = (async (input: string | URL | Request) => {
       requestedUrl = input.toString();
@@ -60,7 +84,7 @@ describe("Octopus Agile electricity provider", () => {
       "https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/"
     );
     expect(url.searchParams.get("page_size")).toBe("150");
-    expect(url.searchParams.get("period_from")).toBe(NOW.toISOString());
+    expect(url.searchParams.get("period_from")).toBe("2026-07-27T23:00:00.000Z");
   });
 
   it("throws a provider-specific error for a failed response", async () => {

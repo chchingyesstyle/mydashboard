@@ -44,6 +44,7 @@ const payload: DashboardPayload = {
     updatedAt: null,
     stale: false,
     prices: [],
+    todayAveragePencePerKwh: null,
     error: "Electricity prices are temporarily unavailable."
   }
 };

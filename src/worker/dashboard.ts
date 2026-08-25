@@ -5,12 +5,11 @@ import {
   type Departure,
   type DeparturesPanel,
   type ElectricityPanel,
-  type ElectricityPriceSlot,
   type RouteConfig,
   type WeatherPanel
 } from "../shared/contracts";
 import { loadWithFallback, type CacheStore, type CachedResult } from "./provider-cache";
-import { fetchAgilePrices } from "./providers/agile";
+import { fetchAgilePrices, type AgileNormalizedResult } from "./providers/agile";
 import { fetchDepartures } from "./providers/rail";
 import {
   createRttClient,
@@ -147,7 +146,7 @@ function weatherPanel(
 }
 
 function electricityPanel(
-  result: PromiseSettledResult<CachedResult<ElectricityPriceSlot[]>>
+  result: PromiseSettledResult<CachedResult<AgileNormalizedResult>>
 ): ElectricityPanel {
   if (result.status === "rejected") {
     return {
@@ -155,6 +154,7 @@ function electricityPanel(
       updatedAt: null,
       stale: false,
       prices: [],
+      todayAveragePencePerKwh: null,
       error: ELECTRICITY_ERROR
     };
   }
@@ -163,7 +163,8 @@ function electricityPanel(
     status: result.value.stale ? "stale" : "live",
     updatedAt: result.value.updatedAt,
     stale: result.value.stale,
-    prices: result.value.value,
+    prices: result.value.value.prices,
+    todayAveragePencePerKwh: result.value.value.todayAveragePencePerKwh,
     error: null
   };
 }

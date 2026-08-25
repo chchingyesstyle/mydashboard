@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveLondonDeparture, toLondonIso } from "../../src/worker/time";
+import { londonDayBoundsUtc, resolveLondonDeparture, toLondonIso } from "../../src/worker/time";
 
 describe("resolveLondonDeparture", () => {
   it("uses British Summer Time for a summer service", () => {
@@ -34,5 +34,21 @@ describe("toLondonIso", () => {
 
   it("rolls a late-night summer instant into the next London day", () => {
     expect(toLondonIso("2026-07-28T23:30:00Z")).toBe("2026-07-29T00:30:00+01:00");
+  });
+});
+
+describe("londonDayBoundsUtc", () => {
+  it("returns BST-adjusted UTC bounds for a summer day", () => {
+    expect(londonDayBoundsUtc(new Date("2026-07-28T12:00:31.000Z"))).toEqual({
+      startUtc: "2026-07-27T23:00:00.000Z",
+      endUtcExclusive: "2026-07-28T23:00:00.000Z"
+    });
+  });
+
+  it("returns unadjusted UTC bounds for a winter day", () => {
+    expect(londonDayBoundsUtc(new Date("2026-01-28T08:00:00.000Z"))).toEqual({
+      startUtc: "2026-01-28T00:00:00.000Z",
+      endUtcExclusive: "2026-01-29T00:00:00.000Z"
+    });
   });
 });

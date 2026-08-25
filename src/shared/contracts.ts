@@ -59,6 +59,7 @@ export interface ElectricityPanel {
   updatedAt: string | null;
   stale: boolean;
   prices: ElectricityPriceSlot[];
+  todayAveragePencePerKwh: number | null;
   error: string | null;
 }
 

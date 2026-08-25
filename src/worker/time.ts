@@ -74,6 +74,21 @@ const londonInstant = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London"
 });
 
+export function londonDayBoundsUtc(now: Date): { startUtc: string; endUtcExclusive: string } {
+  const { year, month, day } = partsFor(now);
+  const dateOnly = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  const startLocal = serviceTimestamp(dateOnly, "00:00");
+
+  const nextDateOnly = new Date(dateOnly);
+  nextDateOnly.setUTCDate(nextDateOnly.getUTCDate() + 1);
+  const endLocal = serviceTimestamp(nextDateOnly, "00:00");
+
+  return {
+    startUtc: new Date(startLocal).toISOString(),
+    endUtcExclusive: new Date(endLocal).toISOString()
+  };
+}
+
 export function toLondonIso(utcIso: string): string {
   const instant = new Date(utcIso);
   const parts = Object.fromEntries(

@@ -146,6 +146,7 @@ describe("dashboard service", () => {
       validTo: "2026-07-28T13:30:00+01:00",
       pricePencePerKwh: 20.475
     });
+    expect(dashboard.electricity.todayAveragePencePerKwh).toBeCloseTo(25.2, 10);
   });
 
   it("keeps departures and weather live when electricity has no fallback", async () => {
@@ -168,6 +169,7 @@ describe("dashboard service", () => {
       updatedAt: null,
       stale: false,
       prices: [],
+      todayAveragePencePerKwh: null,
       error: "Electricity prices are temporarily unavailable."
     });
   });

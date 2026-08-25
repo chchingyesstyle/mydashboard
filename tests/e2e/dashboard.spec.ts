@@ -100,6 +100,7 @@ const liveDashboard: DashboardPayload = {
     updatedAt: "2026-07-28T12:00:00.000Z",
     stale: false,
     prices: [],
+    todayAveragePencePerKwh: null,
     error: null
   }
 };
