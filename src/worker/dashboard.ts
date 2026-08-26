@@ -6,7 +6,8 @@ import {
   type DeparturesPanel,
   type ElectricityPanel,
   type RouteConfig,
-  type WeatherPanel
+  type WeatherPanel,
+  type WeatherWarning
 } from "../shared/contracts";
 import { loadWithFallback, type CacheStore, type CachedResult } from "./provider-cache";
 import { fetchAgilePrices, type AgileNormalizedResult } from "./providers/agile";
@@ -16,6 +17,7 @@ import {
   type RttServiceEnrichment
 } from "./providers/rtt";
 import { fetchWeather, type WeatherValue } from "./providers/weather";
+import { fetchWeatherWarning } from "./providers/weather-warning";
 
 const RAIL_ERROR = "Live departures are temporarily unavailable.";
 const WEATHER_ERROR = "Current weather is temporarily unavailable.";
@@ -109,8 +111,11 @@ function departuresPanel(
 }
 
 function weatherPanel(
-  result: PromiseSettledResult<CachedResult<WeatherValue>>
+  result: PromiseSettledResult<CachedResult<WeatherValue>>,
+  warningResult: PromiseSettledResult<CachedResult<WeatherWarning | null>>
 ): WeatherPanel {
+  const warning = warningResult.status === "fulfilled" ? warningResult.value.value : null;
+
   if (result.status === "rejected") {
     return {
       status: "unavailable",
@@ -130,6 +135,7 @@ function weatherPanel(
       pressureMslHpa: null,
       dailyForecast: [],
       hourlyForecast: [],
+      warning,
       error: WEATHER_ERROR
     };
   }
@@ -145,6 +151,7 @@ function weatherPanel(
       result.value.value.rainChanceNext6HoursPercent ?? null,
     dailyForecast: result.value.value.dailyForecast ?? [],
     hourlyForecast: result.value.value.hourlyForecast ?? [],
+    warning,
     error: null
   };
 }
@@ -208,43 +215,52 @@ export function createDashboardService(deps: {
       }).then((result) => result.value)
         .catch(() => [] as RttServiceEnrichment[])
       : Promise.resolve([] as RttServiceEnrichment[]);
-    const [railResult, weatherResult, electricityResult, enrichmentResult] = await Promise.allSettled([
-      loadWithFallback({
-        cache: deps.cache,
-        key: `rail:${route.id}`,
-        now,
-        freshForMs: 30_000,
-        staleForMs: 5 * 60_000,
-        load: () => fetchDepartures(
-          deps.fetcher,
+    const [railResult, weatherResult, warningResult, electricityResult, enrichmentResult] =
+      await Promise.allSettled([
+        loadWithFallback({
+          cache: deps.cache,
+          key: `rail:${route.id}`,
           now,
-          deps.darwinApiKey,
-          route
-        )
-      }),
-      loadWithFallback({
-        cache: deps.cache,
-        key: `weather:${route.origin.crs}`,
-        now,
-        freshForMs: 10 * 60_000,
-        staleForMs: 30 * 60_000,
-        load: () => fetchWeather(deps.fetcher, now, route)
-      }),
-      loadWithFallback({
-        cache: deps.cache,
-        key: "electricity",
-        now,
-        freshForMs: 15 * 60_000,
-        staleForMs: 3 * 60 * 60_000,
-        load: () => fetchAgilePrices(deps.fetcher, now)
-      }),
-      serviceEnrichments
-    ]);
+          freshForMs: 30_000,
+          staleForMs: 5 * 60_000,
+          load: () => fetchDepartures(
+            deps.fetcher,
+            now,
+            deps.darwinApiKey,
+            route
+          )
+        }),
+        loadWithFallback({
+          cache: deps.cache,
+          key: `weather:${route.origin.crs}`,
+          now,
+          freshForMs: 10 * 60_000,
+          staleForMs: 30 * 60_000,
+          load: () => fetchWeather(deps.fetcher, now, route)
+        }),
+        loadWithFallback({
+          cache: deps.cache,
+          key: `weather-warning:${route.origin.crs}`,
+          now,
+          freshForMs: 10 * 60_000,
+          staleForMs: 30 * 60_000,
+          load: () => fetchWeatherWarning(deps.fetcher, now, route)
+        }),
+        loadWithFallback({
+          cache: deps.cache,
+          key: "electricity",
+          now,
+          freshForMs: 15 * 60_000,
+          staleForMs: 3 * 60 * 60_000,
+          load: () => fetchAgilePrices(deps.fetcher, now)
+        }),
+        serviceEnrichments
+      ]);
     const departures = enrichDepartures(
       departuresPanel(railResult),
       enrichmentResult.status === "fulfilled" ? enrichmentResult.value : []
     );
-    const weather = weatherPanel(weatherResult);
+    const weather = weatherPanel(weatherResult, warningResult);
     const electricity = electricityPanel(electricityResult);
     const generatedAt = [departures.updatedAt, weather.updatedAt, electricity.updatedAt]
       .filter((updatedAt): updatedAt is string => updatedAt !== null)

@@ -83,6 +83,7 @@ const livePayload: DashboardPayload = {
     pressureMslHpa: 1016.4,
     dailyForecast: [],
     hourlyForecast: [],
+    warning: null,
     error: null
   },
   electricity: {
@@ -511,6 +512,7 @@ describe("dashboard rendering", () => {
         pressureMslHpa: null,
         dailyForecast: [],
         hourlyForecast: [],
+        warning: null,
         error: "Current weather is temporarily unavailable."
       }
     });
@@ -577,6 +579,7 @@ describe("dashboard rendering", () => {
         pressureMslHpa: null,
         dailyForecast: [],
         hourlyForecast: [],
+        warning: null,
         error: "Current weather is temporarily unavailable."
       }
     });

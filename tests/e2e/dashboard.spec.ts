@@ -95,6 +95,7 @@ const liveDashboard: DashboardPayload = {
     pressureMslHpa: 1016.4,
     dailyForecast: [],
     hourlyForecast: [],
+    warning: null,
     error: null
   },
   electricity: {

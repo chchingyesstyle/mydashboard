@@ -39,6 +39,7 @@ const payload: DashboardPayload = {
     pressureMslHpa: null,
     dailyForecast: [],
     hourlyForecast: [],
+    warning: null,
     error: "Current weather is temporarily unavailable."
   },
   electricity: {

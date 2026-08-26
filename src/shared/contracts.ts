@@ -44,6 +44,13 @@ export interface HourlyForecastEntry {
   rainChancePercent: number;
 }
 
+export type WeatherWarningLevel = "yellow" | "amber" | "red";
+
+export interface WeatherWarning {
+  level: WeatherWarningLevel;
+  headline: string;
+}
+
 export interface WeatherPanel {
   status: PanelStatus;
   updatedAt: string | null;
@@ -62,6 +69,7 @@ export interface WeatherPanel {
   pressureMslHpa: number | null;
   dailyForecast: DailyForecastDay[];
   hourlyForecast: HourlyForecastEntry[];
+  warning: WeatherWarning | null;
   error: string | null;
 }
 

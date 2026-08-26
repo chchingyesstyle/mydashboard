@@ -40,6 +40,7 @@ class MemoryCacheStore implements CacheStore {
 function networkFetcher(options: {
   rail?: Response;
   weather?: Response;
+  weatherWarning?: Response;
   electricity?: Response;
   rttAccessToken?: Response;
   rttLocation?: Response;
@@ -57,6 +58,10 @@ function networkFetcher(options: {
     if (url.includes("api.open-meteo.com")) {
       return options.weather?.clone() ??
         new Response(JSON.stringify(openMeteoFixture));
+    }
+    if (url.includes("feeds.meteoalarm.org")) {
+      return options.weatherWarning?.clone() ??
+        new Response(JSON.stringify({ warnings: [] }));
     }
     if (url.includes("data.rtt.io/api/get_access_token")) {
       return options.rttAccessToken?.clone() ??
@@ -581,6 +586,7 @@ describe("dashboard service", () => {
       pressureMslHpa: null,
       dailyForecast: [],
       hourlyForecast: [],
+      warning: null,
       error: WEATHER_ERROR
     });
     expect(JSON.stringify(dashboard).split(RAIL_ERROR)).toHaveLength(2);
@@ -604,10 +610,11 @@ describe("dashboard service", () => {
     const dashboard = getDashboard();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(requestedUrls).toHaveLength(3);
+    expect(requestedUrls).toHaveLength(4);
     resolvers[0](new Response(JSON.stringify(darwinFixture)));
     resolvers[1](new Response(JSON.stringify(openMeteoFixture)));
-    resolvers[2](new Response(JSON.stringify(octopusAgileFixture)));
+    resolvers[2](new Response(JSON.stringify({ warnings: [] })));
+    resolvers[3](new Response(JSON.stringify(octopusAgileFixture)));
     await expect(dashboard).resolves.toMatchObject({ status: "live" });
   });
 
