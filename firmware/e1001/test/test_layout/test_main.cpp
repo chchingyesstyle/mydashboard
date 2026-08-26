@@ -117,18 +117,64 @@ void test_weather_text_formatting_and_missing_weather() {
   model.weather.temperatureC = 12.4;
   model.weather.hasCondition = true;
   model.weather.condition = "Partly cloudy";
+  model.weather.hasWeatherCode = true;
+  model.weather.weatherCode = 2;
 
   LayoutResult layout = computeLayout(model, kMaxRows);
   TEST_ASSERT_TRUE(layout.hasWeatherText);
-  TEST_ASSERT_EQUAL_STRING("12.4C, Partly cloudy", layout.weatherText.c_str());
+  TEST_ASSERT_EQUAL_STRING("12.4C", layout.weatherText.c_str());
+  TEST_ASSERT_TRUE(layout.hasWeatherIcon);
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::PartlyCloudy),
+                     static_cast<int>(layout.weatherIconKind));
 
   DashboardModel modelWithoutWeather;
   modelWithoutWeather.status = DashboardStatus::Partial;
   modelWithoutWeather.weather.hasTemperatureC = false;
   modelWithoutWeather.weather.hasCondition = false;
+  modelWithoutWeather.weather.hasWeatherCode = false;
 
   LayoutResult layoutWithoutWeather = computeLayout(modelWithoutWeather, kMaxRows);
   TEST_ASSERT_FALSE(layoutWithoutWeather.hasWeatherText);
+  TEST_ASSERT_FALSE(layoutWithoutWeather.hasWeatherIcon);
+}
+
+void test_weather_icon_kind_mapping() {
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Sun),
+                     static_cast<int>(weatherIconKindFor(true, 0)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Sun),
+                     static_cast<int>(weatherIconKindFor(true, 1)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::PartlyCloudy),
+                     static_cast<int>(weatherIconKindFor(true, 2)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Cloud),
+                     static_cast<int>(weatherIconKindFor(true, 3)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Fog),
+                     static_cast<int>(weatherIconKindFor(true, 45)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Fog),
+                     static_cast<int>(weatherIconKindFor(true, 48)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Rain),
+                     static_cast<int>(weatherIconKindFor(true, 51)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Rain),
+                     static_cast<int>(weatherIconKindFor(true, 67)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Rain),
+                     static_cast<int>(weatherIconKindFor(true, 80)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Rain),
+                     static_cast<int>(weatherIconKindFor(true, 82)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Snow),
+                     static_cast<int>(weatherIconKindFor(true, 71)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Snow),
+                     static_cast<int>(weatherIconKindFor(true, 77)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Snow),
+                     static_cast<int>(weatherIconKindFor(true, 85)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Snow),
+                     static_cast<int>(weatherIconKindFor(true, 86)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Thunderstorm),
+                     static_cast<int>(weatherIconKindFor(true, 95)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Thunderstorm),
+                     static_cast<int>(weatherIconKindFor(true, 99)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Cloud),
+                     static_cast<int>(weatherIconKindFor(true, 4)));
+  TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::Cloud),
+                     static_cast<int>(weatherIconKindFor(false, 0)));
 }
 
 void test_weather_detail_lines_include_only_present_fields() {
@@ -300,6 +346,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_max_rows_constant_is_eight);
   RUN_TEST(test_status_banner_text_for_each_dashboard_status);
   RUN_TEST(test_weather_text_formatting_and_missing_weather);
+  RUN_TEST(test_weather_icon_kind_mapping);
   RUN_TEST(test_weather_detail_lines_include_only_present_fields);
   RUN_TEST(test_pressure_and_today_min_max_lines);
   RUN_TEST(test_today_min_max_line_omitted_when_either_missing);

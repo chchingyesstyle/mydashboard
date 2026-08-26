@@ -9,6 +9,16 @@ constexpr int kMaxRows = 8;
 
 enum class RowEmphasis { Normal, Delayed, Cancelled };
 
+enum class WeatherIconKind {
+  Sun,
+  PartlyCloudy,
+  Cloud,
+  Fog,
+  Rain,
+  Snow,
+  Thunderstorm
+};
+
 struct DepartureRow {
   std::string time;
   std::string statusText;
@@ -31,6 +41,8 @@ struct LayoutResult {
   std::string statusBannerText;
   bool hasWeatherText;
   std::string weatherText;
+  bool hasWeatherIcon;
+  WeatherIconKind weatherIconKind;
   std::vector<std::string> weatherDetailLines;
   std::vector<DepartureRow> rows;
   std::vector<ElectricityRow> electricityRows;
@@ -42,3 +54,5 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
                            const std::string& lastRefreshText = "");
 
 int batteryPercentFromVoltage(double voltage);
+
+WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode);

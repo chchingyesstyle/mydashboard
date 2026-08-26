@@ -73,6 +73,25 @@ void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::stri
 
 }  // namespace
 
+WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode) {
+  if (hasWeatherCode) {
+    if (weatherCode == 0 || weatherCode == 1) return WeatherIconKind::Sun;
+    if (weatherCode == 2) return WeatherIconKind::PartlyCloudy;
+    if (weatherCode == 3) return WeatherIconKind::Cloud;
+    if (weatherCode == 45 || weatherCode == 48) return WeatherIconKind::Fog;
+    if ((weatherCode >= 51 && weatherCode <= 67) ||
+        (weatherCode >= 80 && weatherCode <= 82)) {
+      return WeatherIconKind::Rain;
+    }
+    if ((weatherCode >= 71 && weatherCode <= 77) ||
+        (weatherCode >= 85 && weatherCode <= 86)) {
+      return WeatherIconKind::Snow;
+    }
+    if (weatherCode >= 95 && weatherCode <= 99) return WeatherIconKind::Thunderstorm;
+  }
+  return WeatherIconKind::Cloud;
+}
+
 int batteryPercentFromVoltage(double voltage) {
   struct Point { double voltage; int percent; };
   static const Point kCurve[] = {
@@ -103,10 +122,14 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
 
   if (model.weather.hasTemperatureC && model.weather.hasCondition) {
     layout.hasWeatherText = true;
-    layout.weatherText = formatOneDecimal(model.weather.temperatureC) +
-                          "C, " + model.weather.condition;
+    layout.weatherText = formatOneDecimal(model.weather.temperatureC) + "C";
+    layout.hasWeatherIcon = true;
+    layout.weatherIconKind =
+        weatherIconKindFor(model.weather.hasWeatherCode, model.weather.weatherCode);
   } else {
     layout.hasWeatherText = false;
+    layout.hasWeatherIcon = false;
+    layout.weatherIconKind = WeatherIconKind::Cloud;
   }
   appendWeatherDetailLines(model.weather, layout.weatherDetailLines);
 

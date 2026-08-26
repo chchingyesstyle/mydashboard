@@ -37,6 +37,8 @@ struct WeatherPanel {
   double temperatureC;
   bool hasCondition;
   std::string condition;
+  bool hasWeatherCode;
+  int weatherCode;
   bool hasApparentTemperatureC;
   double apparentTemperatureC;
   bool hasRelativeHumidityPercent;

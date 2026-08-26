@@ -143,6 +143,7 @@ void test_parses_weather_panel_and_dashboard_status() {
       "stale": false,
       "temperatureC": 12.4,
       "condition": "Partly cloudy",
+      "weatherCode": 2,
       "error": null
     },
     "electricity": {
@@ -164,6 +165,39 @@ void test_parses_weather_panel_and_dashboard_status() {
   TEST_ASSERT_EQUAL_FLOAT(12.4, result.model.weather.temperatureC);
   TEST_ASSERT_TRUE(result.model.weather.hasCondition);
   TEST_ASSERT_EQUAL_STRING("Partly cloudy", result.model.weather.condition.c_str());
+  TEST_ASSERT_TRUE(result.model.weather.hasWeatherCode);
+  TEST_ASSERT_EQUAL(2, result.model.weather.weatherCode);
+}
+
+void test_weather_code_absent_when_null() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "partial",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {
+      "status": "unavailable",
+      "updatedAt": null,
+      "stale": false,
+      "temperatureC": null,
+      "condition": null,
+      "weatherCode": null,
+      "error": "Current weather is temporarily unavailable."
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_FALSE(result.model.weather.hasWeatherCode);
 }
 
 void test_parses_stale_and_unavailable_panel_statuses() {
@@ -376,6 +410,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parses_live_departure_with_all_fields);
   RUN_TEST(test_handles_null_platform_null_coach_count_and_cancelled_service);
   RUN_TEST(test_parses_weather_panel_and_dashboard_status);
+  RUN_TEST(test_weather_code_absent_when_null);
   RUN_TEST(test_parses_stale_and_unavailable_panel_statuses);
   RUN_TEST(test_parses_operator_code_and_extended_weather_fields);
   RUN_TEST(test_extended_weather_fields_absent_when_null);

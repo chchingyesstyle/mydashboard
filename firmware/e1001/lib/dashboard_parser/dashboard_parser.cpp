@@ -89,6 +89,13 @@ void parseWeatherPanel(JsonObject weatherJson, WeatherPanel& weather) {
     weather.hasCondition = false;
   }
 
+  if (weatherJson["weatherCode"].is<int>()) {
+    weather.hasWeatherCode = true;
+    weather.weatherCode = weatherJson["weatherCode"].as<int>();
+  } else {
+    weather.hasWeatherCode = false;
+  }
+
   if (weatherJson["apparentTemperatureC"].is<double>()) {
     weather.hasApparentTemperatureC = true;
     weather.apparentTemperatureC = weatherJson["apparentTemperatureC"].as<double>();
