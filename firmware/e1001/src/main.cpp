@@ -13,9 +13,10 @@
 #include "route_selector.h"
 
 namespace {
-// Used when a WiFi connect failure means the current hour (and so the
-// peak/off-peak sleep interval) couldn't be determined.
-constexpr uint64_t kFallbackSleepMicroseconds = 5ULL * 60 * 1000000;
+// The device now always wakes on this fixed 1-minute cadence, ticking a
+// partial-refresh clock most wakes and only doing a full WiFi+fetch
+// refresh every sleepMinutesForHour() minutes (see shouldDoFullRefresh()).
+constexpr uint64_t kClockTickMicroseconds = 60ULL * 1000000;
 // Right white button. The green button (GPIO3) is a boot-strapping pin on
 // the ESP32-S3 and Seeed's own docs warn against using it as a wake source,
 // since it can interfere with future USB firmware uploads.
@@ -30,6 +31,12 @@ constexpr uint64_t kButtonWakeMask =
     (1ULL << kRefreshButtonPin) | (1ULL << kOverrideButtonPin);
 RTC_DATA_ATTR char storedEtag[128] = "";
 RTC_DATA_ATTR int screenCycleIndex = 0;
+// Starts high so the very first boot always does a full refresh.
+RTC_DATA_ATTR int minutesSinceFullRefresh = 999;
+// What the header's right-hand text last actually showed, reused by cheap
+// clock-only ticks so only the time portion changes between full refreshes.
+RTC_DATA_ATTR int lastBatteryPercent = -1;
+RTC_DATA_ATTR char lastStatusBannerText[16] = "";
 
 const char* screenName(Screen screen) {
   switch (screen) {
@@ -41,14 +48,14 @@ const char* screenName(Screen screen) {
   return "Unknown";
 }
 
-void goToSleep(uint64_t sleepMicroseconds) {
+void goToSleep() {
   WiFi.disconnect(true);
   rtc_gpio_pullup_en(kRefreshButtonPin);
   rtc_gpio_pulldown_dis(kRefreshButtonPin);
   rtc_gpio_pullup_en(kOverrideButtonPin);
   rtc_gpio_pulldown_dis(kOverrideButtonPin);
   esp_sleep_enable_ext1_wakeup(kButtonWakeMask, ESP_EXT1_WAKEUP_ANY_LOW);
-  esp_sleep_enable_timer_wakeup(sleepMicroseconds);
+  esp_sleep_enable_timer_wakeup(kClockTickMicroseconds);
   esp_deep_sleep_start();
 }
 }  // namespace
@@ -60,16 +67,40 @@ void setup() {
   bool wokeFromButton = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1;
   bool overridePressed = wokeFromButton &&
       (esp_sleep_get_ext1_wakeup_status() & (1ULL << kOverrideButtonPin)) != 0;
+
+  minutesSinceFullRefresh++;
+  struct tm offlineTime;
+  bool hasOfflineTime = readLocalTimeOffline(offlineTime);
+  int fullRefreshIntervalMinutes =
+      hasOfflineTime ? sleepMinutesForHour(offlineTime.tm_hour) : 5;
+  bool doFullRefresh = shouldDoFullRefresh(
+      wokeFromButton, hasOfflineTime, minutesSinceFullRefresh, fullRefreshIntervalMinutes);
+
+  if (!doFullRefresh) {
+    Serial0.print("E1001 clock tick (");
+    Serial0.print(minutesSinceFullRefresh);
+    Serial0.print("/");
+    Serial0.print(fullRefreshIntervalMinutes);
+    Serial0.println("min, no WiFi)");
+    initDisplay();
+    updateClockOnly(formatLocalTime(offlineTime), std::string(lastStatusBannerText),
+                     lastBatteryPercent);
+    Serial0.println("Updated clock only");
+    goToSleep();
+    return;
+  }
+
   Serial0.println(
       overridePressed ? "E1001 waking up (mode-override button)"
       : wokeFromButton ? "E1001 waking up (manual refresh button)"
-                        : "E1001 waking up");
+                        : "E1001 waking up (full refresh)");
+  minutesSinceFullRefresh = 0;
 
   initDisplay();
 
   if (!connectWiFi(15000)) {
     Serial0.println("WiFi connect failed, keeping existing screen");
-    goToSleep(kFallbackSleepMicroseconds);
+    goToSleep();
     return;
   }
 
@@ -80,16 +111,11 @@ void setup() {
   screenCycleIndex = nextScreenCycleIndex(screenCycleIndex, overridePressed, timeBasedScreen);
   Screen screen = screenForCycleIndex(screenCycleIndex);
   std::string lastRefreshText = hasTime ? formatLocalTime(timeinfo) : "";
-  uint64_t sleepMicroseconds = (hasTime ? sleepMinutesForHour(timeinfo.tm_hour) : 5) *
-                                60ULL * 1000000;
 
   Serial0.print("Screen: ");
   Serial0.print(screenName(screen));
   Serial0.print("  Route: ");
-  Serial0.print(routeIdForScreen(screen).c_str());
-  Serial0.print("  Sleep: ");
-  Serial0.print(static_cast<unsigned long>(sleepMicroseconds / 60ULL / 1000000));
-  Serial0.println("min");
+  Serial0.println(routeIdForScreen(screen).c_str());
 
   FetchResult fetch = fetchDashboard(std::string(storedEtag), routeIdForScreen(screen));
 
@@ -104,6 +130,10 @@ void setup() {
       renderDashboard(layout);
       strncpy(storedEtag, fetch.etag.c_str(), sizeof(storedEtag) - 1);
       storedEtag[sizeof(storedEtag) - 1] = '\0';
+      strncpy(lastStatusBannerText, layout.statusBannerText.c_str(),
+              sizeof(lastStatusBannerText) - 1);
+      lastStatusBannerText[sizeof(lastStatusBannerText) - 1] = '\0';
+      lastBatteryPercent = batteryPercent;
       Serial0.println("Rendered updated dashboard");
     } else {
       Serial0.print("Parse failed, keeping existing screen: ");
@@ -113,7 +143,7 @@ void setup() {
     Serial0.println("Fetch failed, keeping existing screen");
   }
 
-  goToSleep(sleepMicroseconds);
+  goToSleep();
 }
 
 void loop() {

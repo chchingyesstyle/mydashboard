@@ -129,6 +129,25 @@ void test_sleep_minutes_fifteen_outside_commute_window() {
   TEST_ASSERT_EQUAL(15, sleepMinutesForHour(23));
 }
 
+void test_full_refresh_forced_by_button_press() {
+  TEST_ASSERT_TRUE(shouldDoFullRefresh(true, true, 0, 15));
+  TEST_ASSERT_TRUE(shouldDoFullRefresh(true, false, 0, 15));
+}
+
+void test_full_refresh_forced_when_time_unknown() {
+  TEST_ASSERT_TRUE(shouldDoFullRefresh(false, false, 0, 15));
+}
+
+void test_clock_only_tick_below_the_interval() {
+  TEST_ASSERT_FALSE(shouldDoFullRefresh(false, true, 1, 15));
+  TEST_ASSERT_FALSE(shouldDoFullRefresh(false, true, 14, 15));
+}
+
+void test_full_refresh_once_interval_elapsed() {
+  TEST_ASSERT_TRUE(shouldDoFullRefresh(false, true, 15, 15));
+  TEST_ASSERT_TRUE(shouldDoFullRefresh(false, true, 20, 15));
+}
+
 int main(int argc, char** argv) {
   UNITY_BEGIN();
   RUN_TEST(test_commute_mode_from_six_to_before_nine);
@@ -147,5 +166,9 @@ int main(int argc, char** argv) {
   RUN_TEST(test_non_override_wake_between_presses_realigns_to_current_default);
   RUN_TEST(test_sleep_minutes_two_during_commute_window);
   RUN_TEST(test_sleep_minutes_fifteen_outside_commute_window);
+  RUN_TEST(test_full_refresh_forced_by_button_press);
+  RUN_TEST(test_full_refresh_forced_when_time_unknown);
+  RUN_TEST(test_clock_only_tick_below_the_interval);
+  RUN_TEST(test_full_refresh_once_interval_elapsed);
   return UNITY_END();
 }

@@ -1,6 +1,7 @@
 #include "clock.h"
 
 #include <Arduino.h>
+#include <cstdlib>
 #include <time.h>
 
 namespace {
@@ -29,6 +30,20 @@ bool syncLocalTime(struct tm& outTime) {
     time(&now);
   }
 
+  if (now < kMinPlausibleEpoch) {
+    return false;
+  }
+
+  localtime_r(&now, &outTime);
+  return true;
+}
+
+bool readLocalTimeOffline(struct tm& outTime) {
+  setenv("TZ", kLondonTz, 1);
+  tzset();
+
+  time_t now = 0;
+  time(&now);
   if (now < kMinPlausibleEpoch) {
     return false;
   }
