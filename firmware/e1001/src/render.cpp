@@ -241,11 +241,11 @@ void drawDailyForecastRows(const LayoutResult& layout) {
     if (row.hasRainChance) {
       display.setCursor(x, midY + 6);
       display.print(row.rainChanceText.c_str());
-      x += measuredTextWidth(row.rainChanceText) + 20;
     }
 
     display.setFont(&FreeSansBold18pt7b);
-    display.setCursor(x, midY + 8);
+    int tempRangeX = kColumnDividerX - 15 - measuredTextWidth(row.tempRangeText);
+    display.setCursor(tempRangeX, midY + 8);
     display.print(row.tempRangeText.c_str());
 
     y += rowHeight;
