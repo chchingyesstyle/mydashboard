@@ -74,6 +74,24 @@ describe("Realtime Trains coach-count provider", () => {
     );
   });
 
+  it("omits filterTo when requesting an unfiltered board", async () => {
+    let locationUrl: string | undefined;
+    const fetcher = (async (input: string | URL | Request) => {
+      if (input.toString().endsWith("/api/get_access_token")) {
+        return new Response(JSON.stringify(rttAccessTokenFixture));
+      }
+      locationUrl = input.toString();
+      return new Response(JSON.stringify(rttLocationFixture));
+    }) as typeof fetch;
+    const client = createRttClient(fetcher, "refresh-token");
+
+    await client.fetchServiceEnrichments(ROUTES["WFJ-ALL"], NOW);
+
+    const parsed = new URL(locationUrl!);
+    expect(parsed.searchParams.get("code")).toBe("gb-nr:WFJ");
+    expect(parsed.searchParams.has("filterTo")).toBe(false);
+  });
+
   it("exchanges the access token again inside the expiry margin", async () => {
     let tokenRequests = 0;
     const fetcher = (async (input: string | URL | Request) => {

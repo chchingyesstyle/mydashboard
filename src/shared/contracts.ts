@@ -88,6 +88,14 @@ export const ROUTES = {
     origin: { name: "London Euston", crs: "EUS" },
     destination: { name: "Watford Junction", crs: "WFJ" },
     weather: { latitude: 51.5284, longitude: -0.1346 }
+  },
+  // An empty destination.crs is a sentinel meaning "no destination filter" —
+  // the Darwin/RTT providers omit their destination-filter params for it.
+  "WFJ-ALL": {
+    id: "WFJ-ALL",
+    origin: { name: "Watford Junction", crs: "WFJ" },
+    destination: { name: "All destinations", crs: "" },
+    weather: { latitude: 51.6635, longitude: -0.3969 }
   }
 } as const;
 

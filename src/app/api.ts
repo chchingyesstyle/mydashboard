@@ -47,7 +47,8 @@ export function createDashboardClient(fetcher: typeof fetch): {
 } {
   const stateByRoute: Record<RouteId, RouteState> = {
     "WFJ-EUS": { etag: null, payload: null },
-    "EUS-WFJ": { etag: null, payload: null }
+    "EUS-WFJ": { etag: null, payload: null },
+    "WFJ-ALL": { etag: null, payload: null }
   };
 
   return {

@@ -171,10 +171,12 @@ export function createRttClient(
       const token = await tokenFor(now);
       const locationUrl = new URL(`${RTT_BASE_URL}/rtt/location`);
       locationUrl.searchParams.set("code", `gb-nr:${route.origin.crs}`);
-      locationUrl.searchParams.set(
-        "filterTo",
-        `gb-nr:${route.destination.crs}`
-      );
+      if (route.destination.crs !== "") {
+        locationUrl.searchParams.set(
+          "filterTo",
+          `gb-nr:${route.destination.crs}`
+        );
+      }
       const locationResponse = await fetcher(locationUrl, {
         headers: { authorization: `Bearer ${token}` },
         signal: AbortSignal.timeout(7000)

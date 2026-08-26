@@ -99,10 +99,11 @@ export function normalizeDarwin(
 
   const board = response as Record<string, unknown>;
   const generatedAt = stringValue(board.generatedAt);
+  const hasDestinationFilter = destinationCrs !== "";
   if (
     !generatedAt ||
     !isIsoTimestamp(generatedAt) ||
-    stringValue(board.filtercrs) !== destinationCrs
+    (hasDestinationFilter && stringValue(board.filtercrs) !== destinationCrs)
   ) {
     malformedResponse();
   }
@@ -140,8 +141,9 @@ export async function fetchDepartures(
   );
   url.search = new URLSearchParams({
     numRows: "150",
-    filterCrs: route.destination.crs,
-    filterType: "to",
+    ...(route.destination.crs === ""
+      ? {}
+      : { filterCrs: route.destination.crs, filterType: "to" }),
     timeOffset: "0",
     timeWindow: "120"
   }).toString();

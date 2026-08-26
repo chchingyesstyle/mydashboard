@@ -150,6 +150,17 @@ describe("Darwin rail provider", () => {
     )).toThrow("Darwin departures response was malformed");
   });
 
+  it("accepts any destination on an unfiltered board", () => {
+    const { filtercrs: _filtercrs, ...boardWithoutFilter } = darwinFixture;
+
+    const services = normalizeDarwin(
+      boardWithoutFilter,
+      ROUTES["WFJ-ALL"].destination.crs
+    );
+
+    expect(services).toHaveLength(5);
+  });
+
   it.each([
     ["WFJ-EUS", "WFJ", "EUS"],
     ["EUS-WFJ", "EUS", "WFJ"]
@@ -187,6 +198,33 @@ describe("Darwin rail provider", () => {
     });
     expect(request!.headers.get("x-apikey")).toBe("consumer-key");
     expect(request!.url).not.toContain("consumer-key");
+  });
+
+  it("requests an unfiltered Watford Junction board without filterCrs or filterType", async () => {
+    let request: Request | undefined;
+    const fetcher = (async (
+      input: string | URL | Request,
+      init?: RequestInit
+    ) => {
+      request = new Request(input, init);
+      const { filtercrs: _filtercrs, ...boardWithoutFilter } = darwinFixture;
+      return new Response(JSON.stringify(boardWithoutFilter));
+    }) as typeof fetch;
+
+    await fetchDepartures(
+      fetcher,
+      new Date("2026-07-28T11:55:00.000Z"),
+      "consumer-key",
+      ROUTES["WFJ-ALL"]
+    );
+
+    const url = new URL(request!.url);
+    expect(url.pathname.endsWith("/GetDepartureBoard/WFJ")).toBe(true);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      numRows: "150",
+      timeOffset: "0",
+      timeWindow: "120"
+    });
   });
 
   it("does not call Darwin without a configured API key", async () => {
