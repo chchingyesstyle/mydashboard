@@ -11,6 +11,12 @@ constexpr const char* kNtpServer = "pool.ntp.org";
 constexpr uint32_t kSyncTimeoutMs = 5000;
 // Any synced time will be well past this; an unsynced clock reads near zero.
 constexpr time_t kMinPlausibleEpoch = 1000000000;
+
+constexpr const char* kWeekdayNames[7] = {
+    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+constexpr const char* kMonthNames[12] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 }  // namespace
 
 std::string syncAndFormatLocalTime() {
@@ -29,7 +35,9 @@ std::string syncAndFormatLocalTime() {
 
   struct tm timeinfo;
   localtime_r(&now, &timeinfo);
-  char buffer[8];
-  snprintf(buffer, sizeof(buffer), "%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
+  char buffer[24];
+  snprintf(buffer, sizeof(buffer), "%s %d %s  %02d:%02d",
+           kWeekdayNames[timeinfo.tm_wday], timeinfo.tm_mday,
+           kMonthNames[timeinfo.tm_mon], timeinfo.tm_hour, timeinfo.tm_min);
   return std::string(buffer);
 }
