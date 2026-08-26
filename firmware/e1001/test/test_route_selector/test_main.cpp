@@ -25,21 +25,53 @@ void test_route_title_for_mode() {
       "Watford Junction Departures", routeTitleForMode(RouteMode::AllDepartures).c_str());
 }
 
-void test_override_flips_commute_to_all_departures() {
-  TEST_ASSERT_TRUE(
-      effectiveRouteMode(RouteMode::Commute, true) == RouteMode::AllDepartures);
+void test_override_button_flips_toggle_off_or_on() {
+  TEST_ASSERT_TRUE(nextOverrideActive(false, true) == true);
+  TEST_ASSERT_TRUE(nextOverrideActive(true, true) == false);
 }
 
-void test_override_flips_all_departures_to_commute() {
-  TEST_ASSERT_TRUE(
-      effectiveRouteMode(RouteMode::AllDepartures, true) == RouteMode::Commute);
+void test_non_override_wake_always_resets_toggle_off() {
+  TEST_ASSERT_TRUE(nextOverrideActive(true, false) == false);
+  TEST_ASSERT_TRUE(nextOverrideActive(false, false) == false);
 }
 
-void test_no_override_keeps_time_based_mode() {
+void test_mode_for_override_uses_time_based_default_when_inactive() {
+  TEST_ASSERT_TRUE(modeForOverride(RouteMode::Commute, false) == RouteMode::Commute);
   TEST_ASSERT_TRUE(
-      effectiveRouteMode(RouteMode::Commute, false) == RouteMode::Commute);
-  TEST_ASSERT_TRUE(
-      effectiveRouteMode(RouteMode::AllDepartures, false) == RouteMode::AllDepartures);
+      modeForOverride(RouteMode::AllDepartures, false) == RouteMode::AllDepartures);
+}
+
+void test_mode_for_override_flips_time_based_default_when_active() {
+  TEST_ASSERT_TRUE(modeForOverride(RouteMode::Commute, true) == RouteMode::AllDepartures);
+  TEST_ASSERT_TRUE(modeForOverride(RouteMode::AllDepartures, true) == RouteMode::Commute);
+}
+
+void test_repeated_presses_alternate_between_both_views() {
+  bool active = false;
+  RouteMode timeBasedMode = RouteMode::Commute;
+
+  active = nextOverrideActive(active, true);
+  TEST_ASSERT_TRUE(modeForOverride(timeBasedMode, active) == RouteMode::AllDepartures);
+
+  active = nextOverrideActive(active, true);
+  TEST_ASSERT_TRUE(modeForOverride(timeBasedMode, active) == RouteMode::Commute);
+
+  active = nextOverrideActive(active, true);
+  TEST_ASSERT_TRUE(modeForOverride(timeBasedMode, active) == RouteMode::AllDepartures);
+}
+
+void test_non_override_wake_between_presses_resets_the_alternation() {
+  bool active = false;
+  RouteMode timeBasedMode = RouteMode::Commute;
+
+  active = nextOverrideActive(active, true);
+  TEST_ASSERT_TRUE(modeForOverride(timeBasedMode, active) == RouteMode::AllDepartures);
+
+  active = nextOverrideActive(active, false);
+  TEST_ASSERT_TRUE(modeForOverride(timeBasedMode, active) == RouteMode::Commute);
+
+  active = nextOverrideActive(active, true);
+  TEST_ASSERT_TRUE(modeForOverride(timeBasedMode, active) == RouteMode::AllDepartures);
 }
 
 int main(int argc, char** argv) {
@@ -48,8 +80,11 @@ int main(int argc, char** argv) {
   RUN_TEST(test_all_departures_mode_outside_commute_window);
   RUN_TEST(test_route_id_for_mode);
   RUN_TEST(test_route_title_for_mode);
-  RUN_TEST(test_override_flips_commute_to_all_departures);
-  RUN_TEST(test_override_flips_all_departures_to_commute);
-  RUN_TEST(test_no_override_keeps_time_based_mode);
+  RUN_TEST(test_override_button_flips_toggle_off_or_on);
+  RUN_TEST(test_non_override_wake_always_resets_toggle_off);
+  RUN_TEST(test_mode_for_override_uses_time_based_default_when_inactive);
+  RUN_TEST(test_mode_for_override_flips_time_based_default_when_active);
+  RUN_TEST(test_repeated_presses_alternate_between_both_views);
+  RUN_TEST(test_non_override_wake_between_presses_resets_the_alternation);
   return UNITY_END();
 }

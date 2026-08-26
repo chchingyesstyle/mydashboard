@@ -19,12 +19,14 @@ constexpr uint64_t kSleepMicroseconds = 5ULL * 60 * 1000000;
 // since it can interfere with future USB firmware uploads.
 constexpr gpio_num_t kRefreshButtonPin = GPIO_NUM_4;
 // Left white button. GPIO5 is not a boot-strapping pin, so it's safe to use
-// as a second wake source. Wakes and shows the opposite of whatever the
-// time-based route mode would pick, for that one screen only.
+// as a second wake source. Each press flips a persisted toggle, so repeated
+// presses alternate between the two views; any other wake (timer or the
+// plain refresh button) resets the toggle back to the time-based default.
 constexpr gpio_num_t kOverrideButtonPin = GPIO_NUM_5;
 constexpr uint64_t kButtonWakeMask =
     (1ULL << kRefreshButtonPin) | (1ULL << kOverrideButtonPin);
 RTC_DATA_ATTR char storedEtag[128] = "";
+RTC_DATA_ATTR bool overrideActive = false;
 
 void goToSleep() {
   WiFi.disconnect(true);
@@ -50,6 +52,8 @@ void setup() {
       : wokeFromButton ? "E1001 waking up (manual refresh button)"
                         : "E1001 waking up");
 
+  overrideActive = nextOverrideActive(overrideActive, overridePressed);
+
   initDisplay();
 
   if (!connectWiFi(15000)) {
@@ -61,8 +65,11 @@ void setup() {
   struct tm timeinfo;
   bool hasTime = syncLocalTime(timeinfo);
   RouteMode timeBasedMode = hasTime ? routeModeForHour(timeinfo.tm_hour) : RouteMode::Commute;
-  RouteMode mode = effectiveRouteMode(timeBasedMode, overridePressed);
+  RouteMode mode = modeForOverride(timeBasedMode, overrideActive);
   std::string lastRefreshText = hasTime ? formatLocalTime(timeinfo) : "";
+
+  Serial0.print("Route: ");
+  Serial0.println(routeIdForMode(mode).c_str());
 
   FetchResult fetch = fetchDashboard(std::string(storedEtag), routeIdForMode(mode));
 

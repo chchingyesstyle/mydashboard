@@ -21,7 +21,12 @@ std::string routeTitleForMode(RouteMode mode) {
   return "Watford to Euston";
 }
 
-RouteMode effectiveRouteMode(RouteMode timeBasedMode, bool overridePressed) {
-  if (!overridePressed) return timeBasedMode;
+bool nextOverrideActive(bool currentlyActive, bool overrideButtonPressed) {
+  if (!overrideButtonPressed) return false;
+  return !currentlyActive;
+}
+
+RouteMode modeForOverride(RouteMode timeBasedMode, bool overrideActive) {
+  if (!overrideActive) return timeBasedMode;
   return timeBasedMode == RouteMode::Commute ? RouteMode::AllDepartures : RouteMode::Commute;
 }

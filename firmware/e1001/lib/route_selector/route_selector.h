@@ -11,8 +11,13 @@ RouteMode routeModeForHour(int hourOfDay);
 std::string routeIdForMode(RouteMode mode);
 std::string routeTitleForMode(RouteMode mode);
 
-// Returns the opposite of timeBasedMode when the override button was
-// pressed to wake the device, otherwise returns timeBasedMode unchanged.
-// Since the caller re-derives timeBasedMode from the clock on every wake,
-// the override naturally only applies for the wake that requested it.
-RouteMode effectiveRouteMode(RouteMode timeBasedMode, bool overridePressed);
+// Whether the manual override toggle should be active for this wake, given
+// whether it was active going into this wake and whether the override
+// (left) button caused this wake. Pressing the override button flips it;
+// any other wake (timer or the plain refresh button) always resets it off,
+// so only pressing the button again keeps alternating the display.
+bool nextOverrideActive(bool currentlyActive, bool overrideButtonPressed);
+
+// Resolves the mode to display given the time-based default and whether
+// the manual override toggle is currently active.
+RouteMode modeForOverride(RouteMode timeBasedMode, bool overrideActive);

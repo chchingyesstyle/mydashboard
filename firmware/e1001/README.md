@@ -85,10 +85,13 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
 - **Manual refresh:** press the **right white button** (GPIO4) to wake and
   refresh immediately, bypassing the 5-minute timer.
 - **Mode override:** press the **left white button** (GPIO5) to wake and
-  refresh showing the *opposite* of whatever the time-based route mode
-  would pick, for that one screen only — the next wake (timer or either
-  button) re-derives the mode from the clock, so it reverts automatically.
-  Both buttons wake the device via `esp_sleep_enable_ext1_wakeup()`;
+  toggle to the other route view. Repeated presses (with no timer or
+  right-button wake in between) alternate back and forth between the two
+  views; any other wake — the 5-minute timer or the plain refresh button —
+  resets the toggle off, so it snaps back to the time-based default at the
+  next unpressed wake. The toggle state persists across deep sleep in
+  `RTC_DATA_ATTR bool overrideActive`. Both buttons wake the device via
+  `esp_sleep_enable_ext1_wakeup()`;
   `esp_sleep_get_ext1_wakeup_status()` tells `main.cpp` which one fired.
   The **green button** (GPIO3) is deliberately not used for either of
   these — it's an ESP32-S3 boot-strapping pin (it straps the JTAG signal
