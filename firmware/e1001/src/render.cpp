@@ -76,9 +76,6 @@ void drawDepartureRows(const LayoutResult& layout) {
     if (row.hasCoachText) {
       secondLine += "  " + row.coachText;
     }
-    if (row.hasReason) {
-      secondLine += "  " + row.reasonText;
-    }
     display.print(secondLine.c_str());
 
     y += rowHeight;
