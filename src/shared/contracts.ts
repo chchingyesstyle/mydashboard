@@ -29,6 +29,21 @@ export interface DeparturesPanel {
   error: string | null;
 }
 
+export interface DailyForecastDay {
+  date: string;
+  weatherCode: number;
+  temperatureMinC: number;
+  temperatureMaxC: number;
+  rainChancePercent: number;
+}
+
+export interface HourlyForecastEntry {
+  time: string;
+  weatherCode: number;
+  temperatureC: number;
+  rainChancePercent: number;
+}
+
 export interface WeatherPanel {
   status: PanelStatus;
   updatedAt: string | null;
@@ -45,6 +60,8 @@ export interface WeatherPanel {
   windSpeedKph: number | null;
   windDirectionDegrees: number | null;
   pressureMslHpa: number | null;
+  dailyForecast: DailyForecastDay[];
+  hourlyForecast: HourlyForecastEntry[];
   error: string | null;
 }
 

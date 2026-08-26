@@ -107,6 +107,15 @@ pricePencePerKwh }[]`, with times already converted to Europe/London local
 time. It does not affect the top-level `status`, which is still computed from
 `departures` and `weather` only. This is also an additive field.
 
+`weather.dailyForecast` (7 entries: `{ date, weatherCode, temperatureMinC,
+temperatureMaxC, rainChancePercent }`) and `weather.hourlyForecast` (12
+entries: `{ time, weatherCode, temperatureC, rainChancePercent }`) hold the
+Open-Meteo daily/hourly forecast. Both fall back to `[]` if Open-Meteo's
+response for that section is missing or malformed — this never fails the
+whole weather panel, matching the leniency already used for the rain-chance
+and today's-min/max fields. The web app doesn't render either field yet;
+they exist for the E1001's forecast screens.
+
 Responses include an `ETag`. A device should retain it and use a conditional
 request on its next poll:
 

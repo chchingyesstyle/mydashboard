@@ -106,7 +106,7 @@ describe("dashboard service", () => {
       error: null
     });
     expect(dashboard.departures.services).toHaveLength(5);
-    expect(dashboard.weather).toEqual({
+    expect(dashboard.weather).toMatchObject({
       status: "live",
       updatedAt: NOW.toISOString(),
       stale: false,
@@ -124,6 +124,8 @@ describe("dashboard service", () => {
       pressureMslHpa: 1016.4,
       error: null
     });
+    expect(dashboard.weather.dailyForecast).toHaveLength(7);
+    expect(dashboard.weather.hourlyForecast).toHaveLength(12);
   });
 
   it("includes a live electricity panel with current and future Agile prices", async () => {
@@ -459,6 +461,40 @@ describe("dashboard service", () => {
     expect(Object.hasOwn(dashboard.weather, "temperatureMaxTodayC")).toBe(true);
   });
 
+  it("normalizes a cached weather value created before daily/hourly forecasts were added", async () => {
+    const cache = new MemoryCacheStore();
+    cache.seed("weather:WFJ", {
+      temperatureC: 21.4,
+      temperatureMinTodayC: 13.2,
+      temperatureMaxTodayC: 26.8,
+      apparentTemperatureC: 20.8,
+      relativeHumidityPercent: 63,
+      precipitationMm: 0,
+      rainChanceNext6HoursPercent: 60,
+      weatherCode: 2,
+      condition: "Partly cloudy",
+      windSpeedKph: 12.1,
+      windDirectionDegrees: 240,
+      pressureMslHpa: 1016.4
+    }, NOW.toISOString());
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher(),
+      cache,
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard();
+
+    expect(dashboard.weather).toMatchObject({
+      status: "live",
+      dailyForecast: [],
+      hourlyForecast: []
+    });
+    expect(Object.hasOwn(dashboard.weather, "dailyForecast")).toBe(true);
+    expect(Object.hasOwn(dashboard.weather, "hourlyForecast")).toBe(true);
+  });
+
   it("returns stale departures and a partial dashboard when rail refresh fails", async () => {
     const cache = new MemoryCacheStore();
     const cachedServices = normalizeDarwin(
@@ -543,6 +579,8 @@ describe("dashboard service", () => {
       windSpeedKph: null,
       windDirectionDegrees: null,
       pressureMslHpa: null,
+      dailyForecast: [],
+      hourlyForecast: [],
       error: WEATHER_ERROR
     });
     expect(JSON.stringify(dashboard).split(RAIL_ERROR)).toHaveLength(2);

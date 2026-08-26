@@ -5,7 +5,7 @@ import { openMeteoFixture } from "../fixtures/open-meteo";
 
 describe("Open-Meteo weather provider", () => {
   it("normalizes current Watford weather", () => {
-    expect(normalizeWeather(openMeteoFixture)).toEqual({
+    expect(normalizeWeather(openMeteoFixture)).toMatchObject({
       temperatureC: 21.4,
       temperatureMinTodayC: 13.2,
       temperatureMaxTodayC: 26.8,
@@ -18,6 +18,70 @@ describe("Open-Meteo weather provider", () => {
       windSpeedKph: 12.1,
       windDirectionDegrees: 240,
       pressureMslHpa: 1016.4
+    });
+  });
+
+  it("normalizes the 7-day forecast", () => {
+    const { dailyForecast } = normalizeWeather(openMeteoFixture);
+
+    expect(dailyForecast).toHaveLength(7);
+    expect(dailyForecast[0]).toEqual({
+      date: "2026-07-28",
+      weatherCode: 2,
+      temperatureMinC: 13.2,
+      temperatureMaxC: 26.8,
+      rainChancePercent: 60
+    });
+    expect(dailyForecast[6]).toEqual({
+      date: "2026-08-03",
+      weatherCode: 63,
+      temperatureMinC: 15.0,
+      temperatureMaxC: 23.4,
+      rainChancePercent: 70
+    });
+  });
+
+  it("normalizes the 12-hour forecast", () => {
+    const { hourlyForecast } = normalizeWeather(openMeteoFixture);
+
+    expect(hourlyForecast).toHaveLength(12);
+    expect(hourlyForecast[0]).toEqual({
+      time: "2026-07-28T13:00",
+      weatherCode: 2,
+      temperatureC: 21.6,
+      rainChancePercent: 10
+    });
+    expect(hourlyForecast[11]).toEqual({
+      time: "2026-07-29T00:00",
+      weatherCode: 0,
+      temperatureC: 15.0,
+      rainChancePercent: 5
+    });
+  });
+
+  it.each([
+    ["absent", undefined],
+    ["too short", { time: ["2026-07-28"], weather_code: [2], temperature_2m_min: [13.2], temperature_2m_max: [26.8], precipitation_probability_max: [60] }],
+    ["non-numeric weather code", { ...openMeteoFixture.daily, weather_code: ["x", 61, 3, 0, 1, 2, 63] }]
+  ])("keeps current weather with an empty daily forecast when it's malformed (%s)", (_case, daily) => {
+    const payload = { ...openMeteoFixture, daily };
+
+    expect(normalizeWeather(payload)).toMatchObject({
+      temperatureC: 21.4,
+      dailyForecast: []
+    });
+  });
+
+  it.each([
+    ["absent", undefined],
+    ["too short", { time: ["2026-07-28T13:00"], weather_code: [2], temperature_2m: [21.6], precipitation_probability: [10] }],
+    ["non-numeric temperature", { ...openMeteoFixture.hourly, temperature_2m: ["x", 22.1, 21.8, 20.9, 19.7, 18.5, 17.9, 17.2, 16.8, 16.1, 15.6, 15.0] }]
+  ])("keeps current weather with an empty hourly forecast when it's malformed (%s)", (_case, hourly) => {
+    const payload = { ...openMeteoFixture, hourly };
+
+    expect(normalizeWeather(payload)).toMatchObject({
+      temperatureC: 21.4,
+      hourlyForecast: []
     });
   });
 
@@ -142,12 +206,14 @@ describe("Open-Meteo weather provider", () => {
     expect(url.searchParams.get("current")).toBe(
       "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl"
     );
-    expect(url.searchParams.get("hourly")).toBe("precipitation_probability");
-    expect(url.searchParams.get("forecast_hours")).toBe("6");
-    expect(url.searchParams.get("daily")).toBe(
-      "temperature_2m_min,temperature_2m_max"
+    expect(url.searchParams.get("hourly")).toBe(
+      "weather_code,temperature_2m,precipitation_probability"
     );
-    expect(url.searchParams.get("forecast_days")).toBe("1");
+    expect(url.searchParams.get("forecast_hours")).toBe("12");
+    expect(url.searchParams.get("daily")).toBe(
+      "weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max"
+    );
+    expect(url.searchParams.get("forecast_days")).toBe("7");
   });
 
   it("throws a provider-specific error for a failed response", async () => {

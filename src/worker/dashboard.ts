@@ -128,6 +128,8 @@ function weatherPanel(
       windSpeedKph: null,
       windDirectionDegrees: null,
       pressureMslHpa: null,
+      dailyForecast: [],
+      hourlyForecast: [],
       error: WEATHER_ERROR
     };
   }
@@ -141,6 +143,8 @@ function weatherPanel(
     temperatureMaxTodayC: result.value.value.temperatureMaxTodayC ?? null,
     rainChanceNext6HoursPercent:
       result.value.value.rainChanceNext6HoursPercent ?? null,
+    dailyForecast: result.value.value.dailyForecast ?? [],
+    hourlyForecast: result.value.value.hourlyForecast ?? [],
     error: null
   };
 }

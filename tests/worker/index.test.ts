@@ -37,6 +37,8 @@ const payload: DashboardPayload = {
     windSpeedKph: null,
     windDirectionDegrees: null,
     pressureMslHpa: null,
+    dailyForecast: [],
+    hourlyForecast: [],
     error: "Current weather is temporarily unavailable."
   },
   electricity: {

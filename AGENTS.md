@@ -8,9 +8,12 @@ These instructions apply to the entire repository.
 - Show every direct train in both directions between Watford Junction (`WFJ`)
   and London Euston (`EUS`), including London Overground.
 - Show weather for the selected departure station: Watford Junction for
-  `WFJ-EUS` and London Euston for `EUS-WFJ`. Keep forecasts limited to the
-  approved current conditions, today's minimum and maximum temperatures, and
-  next-six-hour rain chance.
+  `WFJ-EUS` and London Euston for `EUS-WFJ`. The web frontend still only
+  shows current conditions, today's minimum and maximum temperatures, and
+  next-six-hour rain chance — the API's `dailyForecast` (7 days) and
+  `hourlyForecast` (12 hours) fields exist for the E1001's forecast
+  screens and aren't rendered on the web app; don't wire them in there
+  without an explicit product decision to do so.
 - Keep the public `/api/v1/dashboard` response suitable for both the web frontend and the `firmware/e1001/` Seeed Studio reTerminal E1001 ESP32 client.
 - The `WFJ-ALL` route (unfiltered Watford Junction departures, `destination.crs` `""` as the no-filter sentinel) exists only for the E1001's off-peak display and is not part of the web app's route switcher — don't add it there.
 - Treat `docs/superpowers/specs/2026-07-28-watford-euston-dashboard-design.md`

@@ -81,6 +81,8 @@ const livePayload: DashboardPayload = {
     windSpeedKph: 12.1,
     windDirectionDegrees: 240,
     pressureMslHpa: 1016.4,
+    dailyForecast: [],
+    hourlyForecast: [],
     error: null
   },
   electricity: {
@@ -507,6 +509,8 @@ describe("dashboard rendering", () => {
         windSpeedKph: null,
         windDirectionDegrees: null,
         pressureMslHpa: null,
+        dailyForecast: [],
+        hourlyForecast: [],
         error: "Current weather is temporarily unavailable."
       }
     });
@@ -571,6 +575,8 @@ describe("dashboard rendering", () => {
         windSpeedKph: null,
         windDirectionDegrees: null,
         pressureMslHpa: null,
+        dailyForecast: [],
+        hourlyForecast: [],
         error: "Current weather is temporarily unavailable."
       }
     });

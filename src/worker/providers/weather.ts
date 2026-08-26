@@ -1,5 +1,10 @@
 import { DEFAULT_ROUTE } from "../../shared/contracts";
-import type { RouteConfig, WeatherPanel } from "../../shared/contracts";
+import type {
+  DailyForecastDay,
+  HourlyForecastEntry,
+  RouteConfig,
+  WeatherPanel
+} from "../../shared/contracts";
 
 export type WeatherValue = {
   [Key in
@@ -16,6 +21,8 @@ export type WeatherValue = {
   rainChanceNext6HoursPercent: number | null;
   temperatureMinTodayC: number | null;
   temperatureMaxTodayC: number | null;
+  dailyForecast: DailyForecastDay[];
+  hourlyForecast: HourlyForecastEntry[];
 };
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
@@ -29,6 +36,11 @@ const CURRENT_FIELDS = [
   "wind_direction_10m",
   "pressure_msl"
 ].join(",");
+const HOURLY_FIELDS = "weather_code,temperature_2m,precipitation_probability";
+const DAILY_FIELDS =
+  "weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max";
+const FORECAST_HOURS = 12;
+const FORECAST_DAYS = 7;
 
 function malformedResponse(): never {
   throw new Error("Open-Meteo current weather response was malformed");
@@ -56,10 +68,11 @@ function rainChanceNext6Hours(payload: Record<string, unknown>): number | null {
 
   const probabilities =
     (hourly as Record<string, unknown>).precipitation_probability;
+  if (!Array.isArray(probabilities) || probabilities.length < 6) return null;
+
+  const nextSix = probabilities.slice(0, 6);
   if (
-    !Array.isArray(probabilities) ||
-    probabilities.length !== 6 ||
-    !probabilities.every(
+    !nextSix.every(
       (value) =>
         typeof value === "number" &&
         Number.isFinite(value) &&
@@ -70,7 +83,88 @@ function rainChanceNext6Hours(payload: Record<string, unknown>): number | null {
     return null;
   }
 
-  return Math.max(...probabilities);
+  return Math.max(...nextSix);
+}
+
+function isPercent(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function dailyForecast(payload: Record<string, unknown>): DailyForecastDay[] {
+  const daily = payload.daily;
+  if (typeof daily !== "object" || daily === null) return [];
+
+  const values = daily as Record<string, unknown>;
+  const { time, weather_code: codes, temperature_2m_min: mins,
+    temperature_2m_max: maxs, precipitation_probability_max: rain } = values;
+  if (
+    !Array.isArray(time) || !Array.isArray(codes) ||
+    !Array.isArray(mins) || !Array.isArray(maxs) || !Array.isArray(rain) ||
+    time.length < FORECAST_DAYS || codes.length < FORECAST_DAYS ||
+    mins.length < FORECAST_DAYS || maxs.length < FORECAST_DAYS ||
+    rain.length < FORECAST_DAYS
+  ) {
+    return [];
+  }
+
+  const days: DailyForecastDay[] = [];
+  for (let i = 0; i < FORECAST_DAYS; i++) {
+    const date = time[i];
+    const weatherCode = codes[i];
+    const temperatureMinC = mins[i];
+    const temperatureMaxC = maxs[i];
+    const rainChancePercent = rain[i];
+    if (
+      typeof date !== "string" ||
+      !isFiniteNumber(weatherCode) ||
+      !isFiniteNumber(temperatureMinC) ||
+      !isFiniteNumber(temperatureMaxC) ||
+      !isPercent(rainChancePercent)
+    ) {
+      return [];
+    }
+    days.push({ date, weatherCode, temperatureMinC, temperatureMaxC, rainChancePercent });
+  }
+  return days;
+}
+
+function hourlyForecast(payload: Record<string, unknown>): HourlyForecastEntry[] {
+  const hourly = payload.hourly;
+  if (typeof hourly !== "object" || hourly === null) return [];
+
+  const values = hourly as Record<string, unknown>;
+  const { time, weather_code: codes, temperature_2m: temps,
+    precipitation_probability: rain } = values;
+  if (
+    !Array.isArray(time) || !Array.isArray(codes) ||
+    !Array.isArray(temps) || !Array.isArray(rain) ||
+    time.length < FORECAST_HOURS || codes.length < FORECAST_HOURS ||
+    temps.length < FORECAST_HOURS || rain.length < FORECAST_HOURS
+  ) {
+    return [];
+  }
+
+  const hours: HourlyForecastEntry[] = [];
+  for (let i = 0; i < FORECAST_HOURS; i++) {
+    const time_ = time[i];
+    const weatherCode = codes[i];
+    const temperatureC = temps[i];
+    const rainChancePercent = rain[i];
+    if (
+      typeof time_ !== "string" ||
+      !isFiniteNumber(weatherCode) ||
+      !isFiniteNumber(temperatureC) ||
+      !isPercent(rainChancePercent)
+    ) {
+      return [];
+    }
+    hours.push({ time: time_, weatherCode, temperatureC, rainChancePercent });
+  }
+  return hours;
 }
 
 function todayTemperatureExtremes(
@@ -171,7 +265,9 @@ export function normalizeWeather(payload: unknown): WeatherValue {
     condition: conditionFor(weatherCode),
     windSpeedKph: numberValue(values, "wind_speed_10m"),
     windDirectionDegrees: numberValue(values, "wind_direction_10m"),
-    pressureMslHpa: optionalNumberValue(values, "pressure_msl")
+    pressureMslHpa: optionalNumberValue(values, "pressure_msl"),
+    dailyForecast: dailyForecast(response),
+    hourlyForecast: hourlyForecast(response)
   };
 }
 
@@ -188,10 +284,10 @@ export async function fetchWeather(
   url.searchParams.set("temperature_unit", "celsius");
   url.searchParams.set("wind_speed_unit", "kmh");
   url.searchParams.set("current", CURRENT_FIELDS);
-  url.searchParams.set("hourly", "precipitation_probability");
-  url.searchParams.set("forecast_hours", "6");
-  url.searchParams.set("daily", "temperature_2m_min,temperature_2m_max");
-  url.searchParams.set("forecast_days", "1");
+  url.searchParams.set("hourly", HOURLY_FIELDS);
+  url.searchParams.set("forecast_hours", String(FORECAST_HOURS));
+  url.searchParams.set("daily", DAILY_FIELDS);
+  url.searchParams.set("forecast_days", String(FORECAST_DAYS));
 
   const response = await fetcher(url, { signal: AbortSignal.timeout(7000) });
 
