@@ -46,3 +46,8 @@ Screen screenForCycleIndex(int index);
 // back on the screen you started from, since it's a plain round-robin.
 int nextScreenCycleIndex(int currentIndex, bool overrideButtonPressed,
                           Screen timeBasedDefault);
+
+// The deep-sleep wake interval, in minutes, for the device's timer wake
+// source: 2 minutes during the 6am-9am commute window (fresher departure
+// data when it matters most), 15 minutes otherwise (battery saving).
+int sleepMinutesForHour(int hourOfDay);

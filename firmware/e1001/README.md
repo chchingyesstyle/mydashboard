@@ -78,20 +78,35 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
 
 ## Hardware notes
 
-- **Refresh cadence:** wakes from deep sleep every 5 minutes to poll the
-  API. This is far more frequent than the ~6-hour interval Seeed's 3-month
-  battery-life rating assumes, so expect meaningfully shorter battery life
-  in practice.
+- **Refresh cadence:** wakes from deep sleep every **2 minutes during the
+  6am-9am commute window** (fresher departure data when it matters most)
+  and every **15 minutes otherwise** (battery saving). `hasTime` false
+  (NTP sync failed) falls back to a fixed 5 minutes. Even the 15-minute
+  off-peak interval is far more frequent than the ~6-hour interval
+  Seeed's 3-month battery-life rating assumes, so expect meaningfully
+  shorter battery life in practice. Selection logic is
+  `sleepMinutesForHour()` in `lib/route_selector`.
+- **Four screens:** Commute (Watford -> Euston, WFJ-EUS), AllDepartures
+  (all Watford Junction departures, WFJ-ALL), SevenDayWeather, and
+  TwelveHourWeather (both WFJ-ALL, since Watford's weather panel doesn't
+  depend on the destination filter). The two weather screens replace the
+  departures column with forecast rows; the right-hand
+  weather/electricity column is identical on every screen. Time-based
+  default: Commute from 6am-9am local time, otherwise SevenDayWeather.
+  Outside Commute, each departure row also shows its destination and
+  operator code (e.g. "to London Euston LM") since the destination is no
+  longer implied by the route.
 - **Manual refresh:** press the **right white button** (GPIO4) to wake and
-  refresh immediately, bypassing the 5-minute timer.
-- **Mode override:** press the **left white button** (GPIO5) to wake and
-  toggle to the other route view. Repeated presses (with no timer or
-  right-button wake in between) alternate back and forth between the two
-  views; any other wake — the 5-minute timer or the plain refresh button —
-  resets the toggle off, so it snaps back to the time-based default at the
-  next unpressed wake. The toggle state persists across deep sleep in
-  `RTC_DATA_ATTR bool overrideActive`. Both buttons wake the device via
-  `esp_sleep_enable_ext1_wakeup()`;
+  refresh immediately, bypassing the timer, without changing the screen.
+- **Screen override:** press the **left white button** (GPIO5) to wake and
+  advance one step around the fixed 4-screen cycle (`kScreenCycle` in
+  `lib/route_selector`: Commute -> SevenDayWeather -> TwelveHourWeather ->
+  AllDepartures -> back to Commute) from wherever it last was, so 4
+  consecutive presses always land back on the screen you started from.
+  Any other wake — the timer or the plain refresh button — realigns the
+  cycle position to the current time-based default. The cycle index
+  persists across deep sleep in `RTC_DATA_ATTR int screenCycleIndex`.
+  Both buttons wake the device via `esp_sleep_enable_ext1_wakeup()`;
   `esp_sleep_get_ext1_wakeup_status()` tells `main.cpp` which one fired.
   The **green button** (GPIO3) is deliberately not used for either of
   these — it's an ESP32-S3 boot-strapping pin (it straps the JTAG signal
@@ -102,18 +117,17 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   attenuation, 2x divider compensation) and mapped to a percentage using
   Seeed's published reTerminal E1001 discharge curve. Shown at the top
   right of the header.
+- **Weather warning:** if `weather.warning` is present, its `event` label
+  (e.g. "Yellow thunderstorm warning") is shown on its own compact line
+  (9pt font) after the current-weather detail lines, since the full
+  headline sentence doesn't fit at the same size as the other lines and
+  cramping every line together to make room made the whole panel harder
+  to read.
 - **Debug logging:** goes to `Serial0` (UART0, wired to the onboard CH340),
   not `Serial` — the XIAO ESP32-S3's board default routes `Serial` to
   native USB CDC, which this board doesn't expose.
 - **TLS:** the `cchk.uk` Cloudflare zone must keep `min_tls_version` at
   `1.2` — this device's ESP32 TLS stack cannot negotiate TLS 1.3.
-- **Time-based route:** the device syncs NTP time on every wake (before
-  fetching) to pick which board to request — `WFJ-EUS` (Watford Junction ->
-  Euston) from 6am-9am local time, otherwise `WFJ-ALL`, an unfiltered
-  Watford Junction departures board. Selection logic lives in
-  `lib/route_selector`. Outside the commute window, each departure row
-  also shows its destination and operator code (e.g. "to London Euston
-  LM") since the destination is no longer implied by the route.
 
 ## Known limitations
 

@@ -116,6 +116,19 @@ void test_non_override_wake_between_presses_realigns_to_current_default() {
   TEST_ASSERT_TRUE(screenForCycleIndex(index) == Screen::AllDepartures);
 }
 
+void test_sleep_minutes_two_during_commute_window() {
+  TEST_ASSERT_EQUAL(2, sleepMinutesForHour(6));
+  TEST_ASSERT_EQUAL(2, sleepMinutesForHour(7));
+  TEST_ASSERT_EQUAL(2, sleepMinutesForHour(8));
+}
+
+void test_sleep_minutes_fifteen_outside_commute_window() {
+  TEST_ASSERT_EQUAL(15, sleepMinutesForHour(9));
+  TEST_ASSERT_EQUAL(15, sleepMinutesForHour(5));
+  TEST_ASSERT_EQUAL(15, sleepMinutesForHour(0));
+  TEST_ASSERT_EQUAL(15, sleepMinutesForHour(23));
+}
+
 int main(int argc, char** argv) {
   UNITY_BEGIN();
   RUN_TEST(test_commute_mode_from_six_to_before_nine);
@@ -132,5 +145,7 @@ int main(int argc, char** argv) {
   RUN_TEST(test_override_button_advances_one_step_from_current_position);
   RUN_TEST(test_four_consecutive_presses_return_to_the_starting_screen);
   RUN_TEST(test_non_override_wake_between_presses_realigns_to_current_default);
+  RUN_TEST(test_sleep_minutes_two_during_commute_window);
+  RUN_TEST(test_sleep_minutes_fifteen_outside_commute_window);
   return UNITY_END();
 }

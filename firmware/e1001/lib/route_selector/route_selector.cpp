@@ -63,3 +63,7 @@ int nextScreenCycleIndex(int currentIndex, bool overrideButtonPressed,
   }
   return screenCycleIndexFor(timeBasedDefault);
 }
+
+int sleepMinutesForHour(int hourOfDay) {
+  return routeModeForHour(hourOfDay) == RouteMode::Commute ? 2 : 15;
+}
