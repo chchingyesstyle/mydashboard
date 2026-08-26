@@ -40,7 +40,24 @@ struct ElectricityRow {
   bool belowAverage;
 };
 
+struct DailyForecastRow {
+  std::string dateText;
+  WeatherIconKind icon;
+  bool hasRainChance;
+  std::string rainChanceText;
+  std::string tempRangeText;
+};
+
+struct HourlyForecastRow {
+  std::string timeText;
+  WeatherIconKind icon;
+  bool hasRainChance;
+  std::string rainChanceText;
+  std::string tempText;
+};
+
 struct LayoutResult {
+  Screen screen;
   std::string routeTitle;
   std::string statusBannerText;
   bool hasWeatherText;
@@ -49,15 +66,25 @@ struct LayoutResult {
   WeatherIconKind weatherIconKind;
   std::vector<std::string> weatherDetailLines;
   std::vector<DepartureRow> rows;
+  std::vector<DailyForecastRow> dailyRows;
+  std::vector<HourlyForecastRow> hourlyRows;
   std::vector<ElectricityRow> electricityRows;
   int batteryPercent;
   std::string lastRefreshText;
 };
 
+// Populates the right-hand weather/electricity column identically for every
+// screen. The left-hand column comes from exactly one of rows (Commute /
+// AllDepartures), dailyRows (SevenDayWeather), or hourlyRows
+// (TwelveHourWeather), matching layout.screen.
 LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent = -1,
                            const std::string& lastRefreshText = "",
-                           RouteMode mode = RouteMode::Commute);
+                           Screen screen = Screen::Commute);
 
 int batteryPercentFromVoltage(double voltage);
 
 WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode);
+
+// Day of week (0=Sunday..6=Saturday) for a Gregorian calendar date, via
+// Sakamoto's algorithm.
+int weekdayIndexFor(int year, int month, int day);

@@ -210,6 +210,90 @@ void test_parses_weather_panel_and_dashboard_status() {
   TEST_ASSERT_EQUAL(2, result.model.weather.weatherCode);
 }
 
+void test_parses_daily_and_hourly_forecast() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "temperatureC": 12.4,
+      "condition": "Partly cloudy",
+      "weatherCode": 2,
+      "dailyForecast": [
+        {"date": "2026-08-24", "weatherCode": 2, "temperatureMinC": 13.2, "temperatureMaxC": 26.8, "rainChancePercent": 60},
+        {"date": "2026-08-25", "weatherCode": 61, "temperatureMinC": 14.1, "temperatureMaxC": 24.5, "rainChancePercent": 80}
+      ],
+      "hourlyForecast": [
+        {"time": "2026-08-24T09:00", "weatherCode": 2, "temperatureC": 21.6, "rainChancePercent": 10},
+        {"time": "2026-08-24T10:00", "weatherCode": 61, "temperatureC": 22.1, "rainChancePercent": 20}
+      ],
+      "error": null
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_EQUAL(2, (int)result.model.weather.dailyForecast.size());
+  TEST_ASSERT_EQUAL_STRING("2026-08-24", result.model.weather.dailyForecast[0].date.c_str());
+  TEST_ASSERT_EQUAL(2, result.model.weather.dailyForecast[0].weatherCode);
+  TEST_ASSERT_EQUAL_FLOAT(13.2, result.model.weather.dailyForecast[0].temperatureMinC);
+  TEST_ASSERT_EQUAL_FLOAT(26.8, result.model.weather.dailyForecast[0].temperatureMaxC);
+  TEST_ASSERT_EQUAL_FLOAT(60, result.model.weather.dailyForecast[0].rainChancePercent);
+  TEST_ASSERT_EQUAL_STRING("2026-08-25", result.model.weather.dailyForecast[1].date.c_str());
+
+  TEST_ASSERT_EQUAL(2, (int)result.model.weather.hourlyForecast.size());
+  TEST_ASSERT_EQUAL_STRING("2026-08-24T09:00", result.model.weather.hourlyForecast[0].time.c_str());
+  TEST_ASSERT_EQUAL(2, result.model.weather.hourlyForecast[0].weatherCode);
+  TEST_ASSERT_EQUAL_FLOAT(21.6, result.model.weather.hourlyForecast[0].temperatureC);
+  TEST_ASSERT_EQUAL_FLOAT(10, result.model.weather.hourlyForecast[0].rainChancePercent);
+  TEST_ASSERT_EQUAL_STRING("2026-08-24T10:00", result.model.weather.hourlyForecast[1].time.c_str());
+}
+
+void test_forecasts_empty_when_absent() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "temperatureC": 12.4,
+      "condition": "Partly cloudy",
+      "weatherCode": 2,
+      "error": null
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_EQUAL(0, (int)result.model.weather.dailyForecast.size());
+  TEST_ASSERT_EQUAL(0, (int)result.model.weather.hourlyForecast.size());
+}
+
 void test_weather_code_absent_when_null() {
   const std::string json = R"({
     "version": 1,
@@ -452,6 +536,8 @@ int main(int argc, char **argv) {
   RUN_TEST(test_final_destination_absent_when_null);
   RUN_TEST(test_handles_null_platform_null_coach_count_and_cancelled_service);
   RUN_TEST(test_parses_weather_panel_and_dashboard_status);
+  RUN_TEST(test_parses_daily_and_hourly_forecast);
+  RUN_TEST(test_forecasts_empty_when_absent);
   RUN_TEST(test_weather_code_absent_when_null);
   RUN_TEST(test_parses_stale_and_unavailable_panel_statuses);
   RUN_TEST(test_parses_operator_code_and_extended_weather_fields);

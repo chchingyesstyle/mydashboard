@@ -60,7 +60,7 @@ void test_commute_mode_shows_operator_name_without_destination() {
       "2026-08-24T08:47:00+01:00", "On time", true, "9", true, 8, false,
       false, "", true, "London Euston"));
 
-  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", RouteMode::Commute);
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::Commute);
 
   TEST_ASSERT_EQUAL_STRING("Watford to Euston", layout.routeTitle.c_str());
   TEST_ASSERT_EQUAL_STRING("London Northwestern Railway", layout.rows[0].operatorText.c_str());
@@ -74,7 +74,7 @@ void test_all_departures_mode_shows_operator_code_and_destination() {
       "2026-08-24T08:47:00+01:00", "On time", true, "9", true, 8, false,
       false, "", true, "London Euston"));
 
-  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", RouteMode::AllDepartures);
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::AllDepartures);
 
   TEST_ASSERT_EQUAL_STRING("Watford Junction Departures", layout.routeTitle.c_str());
   TEST_ASSERT_EQUAL_STRING("LM", layout.rows[0].operatorText.c_str());
@@ -89,7 +89,7 @@ void test_all_departures_mode_omits_destination_when_unknown() {
       "2026-08-24T08:47:00+01:00", "On time", true, "9", false, 0, false,
       false, "", false, ""));
 
-  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", RouteMode::AllDepartures);
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::AllDepartures);
 
   TEST_ASSERT_FALSE(layout.rows[0].hasDestination);
 }
@@ -377,6 +377,76 @@ void test_battery_percent_from_voltage_interpolates_between_points() {
   TEST_ASSERT_EQUAL(45, batteryPercentFromVoltage(3.715));
 }
 
+void test_weekday_index_for_known_anchor_dates() {
+  TEST_ASSERT_EQUAL(4, weekdayIndexFor(1970, 1, 1));   // Thursday
+  TEST_ASSERT_EQUAL(6, weekdayIndexFor(2000, 1, 1));   // Saturday
+  TEST_ASSERT_EQUAL(1, weekdayIndexFor(2024, 1, 1));   // Monday
+}
+
+void test_daily_forecast_layout_formats_date_icon_and_temp_range() {
+  DashboardModel model;
+  model.weather.dailyForecast.push_back(
+      DailyForecastDay{"2026-08-24", 2, 13.2, 26.8, 60});
+  model.weather.dailyForecast.push_back(
+      DailyForecastDay{"2026-08-25", 61, 14.1, 24.5, 80});
+
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::SevenDayWeather);
+
+  TEST_ASSERT_EQUAL_STRING("7-Day Forecast", layout.routeTitle.c_str());
+  TEST_ASSERT_EQUAL(2, (int)layout.dailyRows.size());
+
+  const DailyForecastRow& monday = layout.dailyRows[0];
+  TEST_ASSERT_EQUAL_STRING("Mon 24 Aug", monday.dateText.c_str());
+  TEST_ASSERT_TRUE(monday.icon == WeatherIconKind::PartlyCloudy);
+  TEST_ASSERT_FALSE(monday.hasRainChance);
+  TEST_ASSERT_EQUAL_STRING("13-27C", monday.tempRangeText.c_str());
+
+  const DailyForecastRow& tuesday = layout.dailyRows[1];
+  TEST_ASSERT_EQUAL_STRING("Tue 25 Aug", tuesday.dateText.c_str());
+  TEST_ASSERT_TRUE(tuesday.icon == WeatherIconKind::Rain);
+  TEST_ASSERT_TRUE(tuesday.hasRainChance);
+  TEST_ASSERT_EQUAL_STRING("80%", tuesday.rainChanceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("14-25C", tuesday.tempRangeText.c_str());
+}
+
+void test_hourly_forecast_layout_formats_time_icon_and_temp() {
+  DashboardModel model;
+  model.weather.hourlyForecast.push_back(
+      HourlyForecastEntry{"2026-08-24T09:00", 0, 21.6, 5});
+  model.weather.hourlyForecast.push_back(
+      HourlyForecastEntry{"2026-08-24T10:00", 95, 19.2, 90});
+
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::TwelveHourWeather);
+
+  TEST_ASSERT_EQUAL_STRING("Next 12 Hours", layout.routeTitle.c_str());
+  TEST_ASSERT_EQUAL(2, (int)layout.hourlyRows.size());
+
+  const HourlyForecastRow& first = layout.hourlyRows[0];
+  TEST_ASSERT_EQUAL_STRING("09:00", first.timeText.c_str());
+  TEST_ASSERT_TRUE(first.icon == WeatherIconKind::Sun);
+  TEST_ASSERT_FALSE(first.hasRainChance);
+  TEST_ASSERT_EQUAL_STRING("22C", first.tempText.c_str());
+
+  const HourlyForecastRow& second = layout.hourlyRows[1];
+  TEST_ASSERT_EQUAL_STRING("10:00", second.timeText.c_str());
+  TEST_ASSERT_TRUE(second.icon == WeatherIconKind::Thunderstorm);
+  TEST_ASSERT_TRUE(second.hasRainChance);
+  TEST_ASSERT_EQUAL_STRING("90%", second.rainChanceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("19C", second.tempText.c_str());
+}
+
+void test_forecast_layout_passes_through_status_battery_and_refresh_text() {
+  DashboardModel model;
+  model.status = DashboardStatus::Partial;
+
+  LayoutResult layout =
+      computeLayout(model, kMaxRows, 42, "Mon 24 Aug  09:00", Screen::SevenDayWeather);
+
+  TEST_ASSERT_EQUAL_STRING("Partial", layout.statusBannerText.c_str());
+  TEST_ASSERT_EQUAL(42, layout.batteryPercent);
+  TEST_ASSERT_EQUAL_STRING("Mon 24 Aug  09:00", layout.lastRefreshText.c_str());
+}
+
 void test_battery_percent_from_voltage_clamps_out_of_range() {
   TEST_ASSERT_EQUAL(0, batteryPercentFromVoltage(2.5));
   TEST_ASSERT_EQUAL(100, batteryPercentFromVoltage(4.5));
@@ -406,5 +476,9 @@ int main(int argc, char **argv) {
   RUN_TEST(test_battery_percent_from_voltage_matches_calibration_points);
   RUN_TEST(test_battery_percent_from_voltage_interpolates_between_points);
   RUN_TEST(test_battery_percent_from_voltage_clamps_out_of_range);
+  RUN_TEST(test_weekday_index_for_known_anchor_dates);
+  RUN_TEST(test_daily_forecast_layout_formats_date_icon_and_temp_range);
+  RUN_TEST(test_hourly_forecast_layout_formats_time_icon_and_temp);
+  RUN_TEST(test_forecast_layout_passes_through_status_battery_and_refresh_text);
   return UNITY_END();
 }

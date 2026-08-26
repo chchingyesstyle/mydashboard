@@ -21,12 +21,45 @@ std::string routeTitleForMode(RouteMode mode) {
   return "Watford to Euston";
 }
 
-bool nextOverrideActive(bool currentlyActive, bool overrideButtonPressed) {
-  if (!overrideButtonPressed) return false;
-  return !currentlyActive;
+Screen timeBasedDefaultScreen(int hourOfDay) {
+  return routeModeForHour(hourOfDay) == RouteMode::Commute
+             ? Screen::Commute
+             : Screen::SevenDayWeather;
 }
 
-RouteMode modeForOverride(RouteMode timeBasedMode, bool overrideActive) {
-  if (!overrideActive) return timeBasedMode;
-  return timeBasedMode == RouteMode::Commute ? RouteMode::AllDepartures : RouteMode::Commute;
+RouteMode routeModeForScreen(Screen screen) {
+  return screen == Screen::Commute ? RouteMode::Commute : RouteMode::AllDepartures;
+}
+
+std::string routeIdForScreen(Screen screen) {
+  return routeIdForMode(routeModeForScreen(screen));
+}
+
+std::string screenTitle(Screen screen) {
+  switch (screen) {
+    case Screen::Commute: return routeTitleForMode(RouteMode::Commute);
+    case Screen::AllDepartures: return routeTitleForMode(RouteMode::AllDepartures);
+    case Screen::SevenDayWeather: return "7-Day Forecast";
+    case Screen::TwelveHourWeather: return "Next 12 Hours";
+  }
+  return routeTitleForMode(RouteMode::Commute);
+}
+
+int screenCycleIndexFor(Screen screen) {
+  for (int i = 0; i < kScreenCycleLength; i++) {
+    if (kScreenCycle[i] == screen) return i;
+  }
+  return 0;
+}
+
+Screen screenForCycleIndex(int index) {
+  return kScreenCycle[index];
+}
+
+int nextScreenCycleIndex(int currentIndex, bool overrideButtonPressed,
+                          Screen timeBasedDefault) {
+  if (overrideButtonPressed) {
+    return (currentIndex + 1) % kScreenCycleLength;
+  }
+  return screenCycleIndexFor(timeBasedDefault);
 }

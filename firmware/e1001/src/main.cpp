@@ -19,14 +19,25 @@ constexpr uint64_t kSleepMicroseconds = 5ULL * 60 * 1000000;
 // since it can interfere with future USB firmware uploads.
 constexpr gpio_num_t kRefreshButtonPin = GPIO_NUM_4;
 // Left white button. GPIO5 is not a boot-strapping pin, so it's safe to use
-// as a second wake source. Each press flips a persisted toggle, so repeated
-// presses alternate between the two views; any other wake (timer or the
-// plain refresh button) resets the toggle back to the time-based default.
+// as a second wake source. Each press advances one step around the fixed
+// 4-screen cycle (kScreenCycle), so 4 consecutive presses always return to
+// the screen you started from; any other wake (timer or the plain refresh
+// button) realigns the cycle position to the current time-based default.
 constexpr gpio_num_t kOverrideButtonPin = GPIO_NUM_5;
 constexpr uint64_t kButtonWakeMask =
     (1ULL << kRefreshButtonPin) | (1ULL << kOverrideButtonPin);
 RTC_DATA_ATTR char storedEtag[128] = "";
-RTC_DATA_ATTR bool overrideActive = false;
+RTC_DATA_ATTR int screenCycleIndex = 0;
+
+const char* screenName(Screen screen) {
+  switch (screen) {
+    case Screen::Commute: return "Commute";
+    case Screen::AllDepartures: return "AllDepartures";
+    case Screen::SevenDayWeather: return "SevenDayWeather";
+    case Screen::TwelveHourWeather: return "TwelveHourWeather";
+  }
+  return "Unknown";
+}
 
 void goToSleep() {
   WiFi.disconnect(true);
@@ -52,8 +63,6 @@ void setup() {
       : wokeFromButton ? "E1001 waking up (manual refresh button)"
                         : "E1001 waking up");
 
-  overrideActive = nextOverrideActive(overrideActive, overridePressed);
-
   initDisplay();
 
   if (!connectWiFi(15000)) {
@@ -64,14 +73,18 @@ void setup() {
 
   struct tm timeinfo;
   bool hasTime = syncLocalTime(timeinfo);
-  RouteMode timeBasedMode = hasTime ? routeModeForHour(timeinfo.tm_hour) : RouteMode::Commute;
-  RouteMode mode = modeForOverride(timeBasedMode, overrideActive);
+  Screen timeBasedScreen =
+      hasTime ? timeBasedDefaultScreen(timeinfo.tm_hour) : Screen::Commute;
+  screenCycleIndex = nextScreenCycleIndex(screenCycleIndex, overridePressed, timeBasedScreen);
+  Screen screen = screenForCycleIndex(screenCycleIndex);
   std::string lastRefreshText = hasTime ? formatLocalTime(timeinfo) : "";
 
-  Serial0.print("Route: ");
-  Serial0.println(routeIdForMode(mode).c_str());
+  Serial0.print("Screen: ");
+  Serial0.print(screenName(screen));
+  Serial0.print("  Route: ");
+  Serial0.println(routeIdForScreen(screen).c_str());
 
-  FetchResult fetch = fetchDashboard(std::string(storedEtag), routeIdForMode(mode));
+  FetchResult fetch = fetchDashboard(std::string(storedEtag), routeIdForScreen(screen));
 
   if (fetch.status == FetchStatus::NotModified) {
     Serial0.println("304 Not Modified, skipping redraw");
@@ -79,8 +92,8 @@ void setup() {
     ParseResult parsed = parseDashboard(fetch.body);
     if (parsed.ok) {
       int batteryPercent = batteryPercentFromVoltage(readBatteryVoltage());
-      LayoutResult layout =
-          computeLayout(parsed.model, kMaxRows, batteryPercent, lastRefreshText, mode);
+      LayoutResult layout = computeLayout(parsed.model, kMaxRows, batteryPercent,
+                                           lastRefreshText, screen);
       renderDashboard(layout);
       strncpy(storedEtag, fetch.etag.c_str(), sizeof(storedEtag) - 1);
       storedEtag[sizeof(storedEtag) - 1] = '\0';

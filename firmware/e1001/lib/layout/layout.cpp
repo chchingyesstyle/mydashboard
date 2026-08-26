@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 
 namespace {
 
@@ -47,6 +48,43 @@ std::string formatPrice(double pricePencePerKwh) {
   char buffer[16];
   snprintf(buffer, sizeof(buffer), "%.2fp", pricePencePerKwh);
   return std::string(buffer);
+}
+
+constexpr const char* kWeekdayNames[7] = {
+    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+constexpr const char* kMonthNames[12] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+bool parseIsoDate(const std::string& date, int& year, int& month, int& day) {
+  if (date.size() < 10) return false;
+  year = std::atoi(date.substr(0, 4).c_str());
+  month = std::atoi(date.substr(5, 2).c_str());
+  day = std::atoi(date.substr(8, 2).c_str());
+  return year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= 31;
+}
+
+std::string formatDailyDateText(const std::string& date) {
+  int year, month, day;
+  if (!parseIsoDate(date, year, month, day)) return date;
+  int weekday = weekdayIndexFor(year, month, day);
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%s %d %s", kWeekdayNames[weekday], day,
+           kMonthNames[month - 1]);
+  return std::string(buffer);
+}
+
+bool shouldShowRainChance(WeatherIconKind icon) {
+  return icon == WeatherIconKind::Rain || icon == WeatherIconKind::Snow ||
+         icon == WeatherIconKind::Thunderstorm;
+}
+
+std::string formatRoundedWhole(double value) {
+  return formatWholeNumber(std::round(value));
+}
+
+std::string formatPercent(double value) {
+  return formatWholeNumber(std::round(value)) + "%";
 }
 
 void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::string>& lines) {
@@ -114,9 +152,10 @@ int batteryPercentFromVoltage(double voltage) {
 }
 
 LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent,
-                           const std::string& lastRefreshText, RouteMode mode) {
+                           const std::string& lastRefreshText, Screen screen) {
   LayoutResult layout;
-  layout.routeTitle = routeTitleForMode(mode);
+  layout.screen = screen;
+  layout.routeTitle = screenTitle(screen);
   layout.batteryPercent = batteryPercent;
   layout.lastRefreshText = lastRefreshText;
   layout.statusBannerText = bannerTextFor(model.status);
@@ -134,33 +173,60 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
   }
   appendWeatherDetailLines(model.weather, layout.weatherDetailLines);
 
-  int rowCount = static_cast<int>(model.departures.services.size());
-  int rowsToRender = rowCount < maxRows ? rowCount : maxRows;
+  if (screen == Screen::Commute || screen == Screen::AllDepartures) {
+    int rowCount = static_cast<int>(model.departures.services.size());
+    int rowsToRender = rowCount < maxRows ? rowCount : maxRows;
 
-  for (int i = 0; i < rowsToRender; i++) {
-    const ParsedDeparture& departure = model.departures.services[i];
-    DepartureRow row;
-    row.time = extractTimeOfDay(departure.scheduledDeparture);
-    row.statusText = departure.expectedDisplay;
-    row.platformText = departure.hasPlatform ? ("Platform " + departure.platform) : "Platform TBC";
-    if (mode == RouteMode::AllDepartures) {
-      row.operatorText = departure.operatorCode;
-      row.hasDestination = departure.hasFinalDestination;
-      row.destinationText = departure.finalDestinationName;
-    } else {
-      row.operatorText = departure.operatorName;
-      row.hasDestination = false;
+    for (int i = 0; i < rowsToRender; i++) {
+      const ParsedDeparture& departure = model.departures.services[i];
+      DepartureRow row;
+      row.time = extractTimeOfDay(departure.scheduledDeparture);
+      row.statusText = departure.expectedDisplay;
+      row.platformText = departure.hasPlatform ? ("Platform " + departure.platform) : "Platform TBC";
+      if (screen == Screen::AllDepartures) {
+        row.operatorText = departure.operatorCode;
+        row.hasDestination = departure.hasFinalDestination;
+        row.destinationText = departure.finalDestinationName;
+      } else {
+        row.operatorText = departure.operatorName;
+        row.hasDestination = false;
+      }
+      row.hasCoachText = departure.hasCoachCount;
+      if (row.hasCoachText) {
+        row.coachText = std::to_string(departure.coachCount) + " coaches";
+      }
+      row.emphasis = emphasisFor(departure);
+      row.hasReason = departure.hasReason;
+      if (row.hasReason) {
+        row.reasonText = departure.reason;
+      }
+      layout.rows.push_back(row);
     }
-    row.hasCoachText = departure.hasCoachCount;
-    if (row.hasCoachText) {
-      row.coachText = std::to_string(departure.coachCount) + " coaches";
+  } else if (screen == Screen::SevenDayWeather) {
+    for (const auto& day : model.weather.dailyForecast) {
+      DailyForecastRow row;
+      row.dateText = formatDailyDateText(day.date);
+      row.icon = weatherIconKindFor(true, day.weatherCode);
+      row.hasRainChance = shouldShowRainChance(row.icon);
+      if (row.hasRainChance) {
+        row.rainChanceText = formatPercent(day.rainChancePercent);
+      }
+      row.tempRangeText = formatRoundedWhole(day.temperatureMinC) + "-" +
+                           formatRoundedWhole(day.temperatureMaxC) + "C";
+      layout.dailyRows.push_back(row);
     }
-    row.emphasis = emphasisFor(departure);
-    row.hasReason = departure.hasReason;
-    if (row.hasReason) {
-      row.reasonText = departure.reason;
+  } else {
+    for (const auto& hour : model.weather.hourlyForecast) {
+      HourlyForecastRow row;
+      row.timeText = extractTimeOfDay(hour.time);
+      row.icon = weatherIconKindFor(true, hour.weatherCode);
+      row.hasRainChance = shouldShowRainChance(row.icon);
+      if (row.hasRainChance) {
+        row.rainChanceText = formatPercent(hour.rainChancePercent);
+      }
+      row.tempText = formatRoundedWhole(hour.temperatureC) + "C";
+      layout.hourlyRows.push_back(row);
     }
-    layout.rows.push_back(row);
   }
 
   int electricityCount = static_cast<int>(model.electricity.prices.size());
@@ -176,4 +242,10 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
   }
 
   return layout;
+}
+
+int weekdayIndexFor(int year, int month, int day) {
+  static const int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+  if (month < 3) year -= 1;
+  return (year + year / 4 - year / 100 + year / 400 + t[month - 1] + day) % 7;
 }

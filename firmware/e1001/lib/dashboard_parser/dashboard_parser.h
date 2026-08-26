@@ -30,6 +30,21 @@ struct DeparturesPanel {
   std::vector<ParsedDeparture> services;
 };
 
+struct DailyForecastDay {
+  std::string date;
+  int weatherCode;
+  double temperatureMinC;
+  double temperatureMaxC;
+  double rainChancePercent;
+};
+
+struct HourlyForecastEntry {
+  std::string time;
+  int weatherCode;
+  double temperatureC;
+  double rainChancePercent;
+};
+
 struct WeatherPanel {
   PanelStatus status;
   bool stale;
@@ -55,6 +70,8 @@ struct WeatherPanel {
   double temperatureMinTodayC;
   bool hasTemperatureMaxTodayC;
   double temperatureMaxTodayC;
+  std::vector<DailyForecastDay> dailyForecast;
+  std::vector<HourlyForecastEntry> hourlyForecast;
 };
 
 struct ElectricityPriceSlot {

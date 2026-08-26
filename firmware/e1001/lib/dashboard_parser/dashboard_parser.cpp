@@ -151,6 +151,38 @@ void parseWeatherPanel(JsonObject weatherJson, WeatherPanel& weather) {
   } else {
     weather.hasTemperatureMaxTodayC = false;
   }
+
+  if (weatherJson["dailyForecast"].is<JsonArray>()) {
+    for (JsonObject day : weatherJson["dailyForecast"].as<JsonArray>()) {
+      if (!day["date"].is<const char*>() || !day["weatherCode"].is<int>() ||
+          !day["temperatureMinC"].is<double>() || !day["temperatureMaxC"].is<double>() ||
+          !day["rainChancePercent"].is<double>()) {
+        continue;
+      }
+      DailyForecastDay forecastDay;
+      forecastDay.date = day["date"].as<const char*>();
+      forecastDay.weatherCode = day["weatherCode"].as<int>();
+      forecastDay.temperatureMinC = day["temperatureMinC"].as<double>();
+      forecastDay.temperatureMaxC = day["temperatureMaxC"].as<double>();
+      forecastDay.rainChancePercent = day["rainChancePercent"].as<double>();
+      weather.dailyForecast.push_back(forecastDay);
+    }
+  }
+
+  if (weatherJson["hourlyForecast"].is<JsonArray>()) {
+    for (JsonObject hour : weatherJson["hourlyForecast"].as<JsonArray>()) {
+      if (!hour["time"].is<const char*>() || !hour["weatherCode"].is<int>() ||
+          !hour["temperatureC"].is<double>() || !hour["rainChancePercent"].is<double>()) {
+        continue;
+      }
+      HourlyForecastEntry forecastHour;
+      forecastHour.time = hour["time"].as<const char*>();
+      forecastHour.weatherCode = hour["weatherCode"].as<int>();
+      forecastHour.temperatureC = hour["temperatureC"].as<double>();
+      forecastHour.rainChancePercent = hour["rainChancePercent"].as<double>();
+      weather.hourlyForecast.push_back(forecastHour);
+    }
+  }
 }
 
 void parseElectricityPanel(JsonObject electricityJson, ElectricityPanel& electricity) {
