@@ -73,16 +73,21 @@ The same attribution appears in the dashboard footer.
 
 ## Public API
 
-The browser and future device clients use:
+The browser and device clients use:
 
 ```text
 GET https://dashboard.cchk.uk/api/v1/dashboard
 GET https://dashboard.cchk.uk/api/v1/dashboard?route=WFJ-EUS
 GET https://dashboard.cchk.uk/api/v1/dashboard?route=EUS-WFJ
+GET https://dashboard.cchk.uk/api/v1/dashboard?route=WFJ-ALL
 ```
 
 The request without a `route` query defaults to `WFJ-EUS`. Empty, repeated, or
-unsupported route values return `400 Bad Request`.
+unsupported route values return `400 Bad Request`. `WFJ-ALL` returns every
+Watford Junction departure with no destination filter (`route.destination`
+is `{ "name": "All destinations", "crs": "" }`); it's only used by the
+E1001 firmware outside its 6am-9am commute window and isn't exposed in the
+web app's route switcher.
 
 The versioned response has stable, provider-neutral fields, ISO 8601
 timestamps, compact status enums, CORS support, and independent `departures`,

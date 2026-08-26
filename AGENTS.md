@@ -12,6 +12,7 @@ These instructions apply to the entire repository.
   approved current conditions, today's minimum and maximum temperatures, and
   next-six-hour rain chance.
 - Keep the public `/api/v1/dashboard` response suitable for both the web frontend and the `firmware/e1001/` Seeed Studio reTerminal E1001 ESP32 client.
+- The `WFJ-ALL` route (unfiltered Watford Junction departures, `destination.crs` `""` as the no-filter sentinel) exists only for the E1001's off-peak display and is not part of the web app's route switcher — don't add it there.
 - Treat `docs/superpowers/specs/2026-07-28-watford-euston-dashboard-design.md`
   as the base product specification and
   `docs/superpowers/specs/2026-07-28-darwin-pressure-accessibility-design.md`

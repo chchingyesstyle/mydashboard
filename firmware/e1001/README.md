@@ -96,11 +96,18 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   native USB CDC, which this board doesn't expose.
 - **TLS:** the `cchk.uk` Cloudflare zone must keep `min_tls_version` at
   `1.2` — this device's ESP32 TLS stack cannot negotiate TLS 1.3.
+- **Time-based route:** the device syncs NTP time on every wake (before
+  fetching) to pick which board to request — `WFJ-EUS` (Watford Junction ->
+  Euston) from 6am-9am local time, otherwise `WFJ-ALL`, an unfiltered
+  Watford Junction departures board. Selection logic lives in
+  `lib/route_selector`. Outside the commute window, each departure row
+  also shows its destination and operator code (e.g. "to London Euston
+  LM") since the destination is no longer implied by the route.
 
 ## Known limitations
 
-- Only the default `WFJ-EUS` route is fetched; the return direction isn't
-  supported on this device.
+- The reverse commute route (`EUS-WFJ`) isn't fetched by this device —
+  only `WFJ-EUS` (6am-9am) and `WFJ-ALL` (otherwise).
 - No captive-portal Wi-Fi setup — credentials are hardcoded in
   `src/secrets.h` and require reflashing (or editing and rebuilding) to
   change networks.
