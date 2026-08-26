@@ -148,14 +148,14 @@ void drawWeatherIcon(WeatherIconKind kind, int cx, int cy) {
 }
 
 void drawWeather(const LayoutResult& layout) {
-  int y = kHeaderHeight + 34;
+  int y = kHeaderHeight + 48;
   display.setFont(&FreeSansBold24pt7b);
   display.setCursor(kColumnDividerX + 10, y);
   if (layout.hasWeatherText) {
     display.print(layout.weatherText.c_str());
   }
   if (layout.hasWeatherIcon) {
-    drawWeatherIcon(layout.weatherIconKind, kColumnDividerX + 215, y - 14);
+    drawWeatherIcon(layout.weatherIconKind, kColumnDividerX + 215, y - 8);
   }
 
   display.setFont(&FreeSans12pt7b);
@@ -163,7 +163,7 @@ void drawWeather(const LayoutResult& layout) {
   for (const auto& line : layout.weatherDetailLines) {
     display.setCursor(kColumnDividerX + 10, y);
     display.print(line.c_str());
-    y += 22;
+    y += 20;
   }
 }
 
