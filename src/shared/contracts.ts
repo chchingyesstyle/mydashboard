@@ -48,6 +48,7 @@ export type WeatherWarningLevel = "yellow" | "amber" | "red";
 
 export interface WeatherWarning {
   level: WeatherWarningLevel;
+  event: string;
   headline: string;
 }
 

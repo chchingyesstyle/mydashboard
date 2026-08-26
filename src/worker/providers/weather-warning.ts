@@ -105,9 +105,11 @@ export function normalizeWeatherWarning(
 
       const headline = typeof infoRecord.headline === "string" ? infoRecord.headline : null;
       if (headline === null) continue;
+      const event = typeof infoRecord.event === "string" ? infoRecord.event : null;
+      if (event === null) continue;
 
       if (best === null || SEVERITY_RANK[level] > SEVERITY_RANK[best.level]) {
-        best = { level, headline };
+        best = { level, event, headline };
       }
     }
   }

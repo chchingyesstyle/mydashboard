@@ -23,6 +23,7 @@ describe("MeteoAlarm weather warning provider", () => {
     const feed = meteoalarmFeed([meteoalarmActiveYellowCoveringWatford]);
     expect(normalizeWeatherWarning(feed, NOW, WATFORD)).toEqual({
       level: "yellow",
+      event: "Yellow thunderstorm warning",
       headline: "A small risk of flooding and disruption from thunderstorms."
     });
   });
@@ -35,6 +36,7 @@ describe("MeteoAlarm weather warning provider", () => {
     ]);
     expect(normalizeWeatherWarning(feed, NOW, WATFORD)).toEqual({
       level: "red",
+      event: "Red wind warning",
       headline: "Danger to life from extremely strong winds."
     });
   });
@@ -96,6 +98,7 @@ describe("MeteoAlarm weather warning provider", () => {
     );
     expect(result).toEqual({
       level: "yellow",
+      event: "Yellow thunderstorm warning",
       headline: "A small risk of flooding and disruption from thunderstorms."
     });
   });
