@@ -292,6 +292,45 @@ void test_forecasts_empty_when_absent() {
   TEST_ASSERT_TRUE(result.ok);
   TEST_ASSERT_EQUAL(0, (int)result.model.weather.dailyForecast.size());
   TEST_ASSERT_EQUAL(0, (int)result.model.weather.hourlyForecast.size());
+  TEST_ASSERT_FALSE(result.model.weather.hasWarning);
+}
+
+void test_parses_weather_warning_when_present() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "temperatureC": 12.4,
+      "condition": "Partly cloudy",
+      "weatherCode": 2,
+      "warning": {"level": "yellow", "event": "Yellow thunderstorm warning", "headline": "A small risk of flooding and disruption from thunderstorms."},
+      "error": null
+    },
+    "electricity": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "prices": [],
+      "error": null
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_TRUE(result.model.weather.hasWarning);
+  TEST_ASSERT_EQUAL_STRING("yellow", result.model.weather.warningLevel.c_str());
+  TEST_ASSERT_EQUAL_STRING(
+      "Yellow thunderstorm warning", result.model.weather.warningEvent.c_str());
+  TEST_ASSERT_EQUAL_STRING(
+      "A small risk of flooding and disruption from thunderstorms.",
+      result.model.weather.warningHeadline.c_str());
 }
 
 void test_weather_code_absent_when_null() {
@@ -538,6 +577,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parses_weather_panel_and_dashboard_status);
   RUN_TEST(test_parses_daily_and_hourly_forecast);
   RUN_TEST(test_forecasts_empty_when_absent);
+  RUN_TEST(test_parses_weather_warning_when_present);
   RUN_TEST(test_weather_code_absent_when_null);
   RUN_TEST(test_parses_stale_and_unavailable_panel_statuses);
   RUN_TEST(test_parses_operator_code_and_extended_weather_fields);

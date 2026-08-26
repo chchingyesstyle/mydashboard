@@ -65,6 +65,8 @@ struct LayoutResult {
   bool hasWeatherIcon;
   WeatherIconKind weatherIconKind;
   std::vector<std::string> weatherDetailLines;
+  bool hasWeatherWarning;
+  std::string weatherWarningText;
   std::vector<DepartureRow> rows;
   std::vector<DailyForecastRow> dailyRows;
   std::vector<HourlyForecastRow> hourlyRows;

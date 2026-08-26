@@ -72,6 +72,10 @@ struct WeatherPanel {
   double temperatureMaxTodayC;
   std::vector<DailyForecastDay> dailyForecast;
   std::vector<HourlyForecastEntry> hourlyForecast;
+  bool hasWarning;
+  std::string warningLevel;
+  std::string warningEvent;
+  std::string warningHeadline;
 };
 
 struct ElectricityPriceSlot {

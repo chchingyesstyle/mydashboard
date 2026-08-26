@@ -172,6 +172,12 @@ void drawWeather(const LayoutResult& layout) {
     display.print(line.c_str());
     y += 20;
   }
+
+  if (layout.hasWeatherWarning) {
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(kColumnDividerX + 10, y);
+    display.print(layout.weatherWarningText.c_str());
+  }
 }
 
 void drawElectricity(const LayoutResult& layout) {

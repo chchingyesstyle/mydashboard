@@ -109,6 +109,16 @@ void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::stri
   }
 }
 
+std::string weatherWarningTextFor(const WeatherPanel& weather) {
+  if (!weather.hasWarning) return "";
+  std::string text = weather.warningEvent;
+  const size_t kMaxLineLength = 45;
+  if (text.size() > kMaxLineLength) {
+    text = text.substr(0, kMaxLineLength - 3) + "...";
+  }
+  return text;
+}
+
 }  // namespace
 
 WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode) {
@@ -172,6 +182,8 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
     layout.weatherIconKind = WeatherIconKind::Cloud;
   }
   appendWeatherDetailLines(model.weather, layout.weatherDetailLines);
+  layout.hasWeatherWarning = model.weather.hasWarning;
+  layout.weatherWarningText = weatherWarningTextFor(model.weather);
 
   if (screen == Screen::Commute || screen == Screen::AllDepartures) {
     int rowCount = static_cast<int>(model.departures.services.size());

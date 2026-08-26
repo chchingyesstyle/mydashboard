@@ -183,6 +183,21 @@ void parseWeatherPanel(JsonObject weatherJson, WeatherPanel& weather) {
       weather.hourlyForecast.push_back(forecastHour);
     }
   }
+
+  if (weatherJson["warning"].is<JsonObject>()) {
+    JsonObject warningJson = weatherJson["warning"].as<JsonObject>();
+    if (warningJson["level"].is<const char*>() && warningJson["event"].is<const char*>() &&
+        warningJson["headline"].is<const char*>()) {
+      weather.hasWarning = true;
+      weather.warningLevel = warningJson["level"].as<const char*>();
+      weather.warningEvent = warningJson["event"].as<const char*>();
+      weather.warningHeadline = warningJson["headline"].as<const char*>();
+    } else {
+      weather.hasWarning = false;
+    }
+  } else {
+    weather.hasWarning = false;
+  }
 }
 
 void parseElectricityPanel(JsonObject electricityJson, ElectricityPanel& electricity) {

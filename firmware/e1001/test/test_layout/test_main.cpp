@@ -235,6 +235,7 @@ void test_weather_detail_lines_include_only_present_fields() {
   model.weather.hasPressureMslHpa = false;
   model.weather.hasTemperatureMinTodayC = false;
   model.weather.hasTemperatureMaxTodayC = false;
+  model.weather.hasWarning = false;
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
@@ -257,6 +258,7 @@ void test_pressure_and_today_min_max_lines() {
   model.weather.temperatureMinTodayC = 13.2;
   model.weather.hasTemperatureMaxTodayC = true;
   model.weather.temperatureMaxTodayC = 26.8;
+  model.weather.hasWarning = false;
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
@@ -276,10 +278,79 @@ void test_today_min_max_line_omitted_when_either_missing() {
   model.weather.hasTemperatureMinTodayC = true;
   model.weather.temperatureMinTodayC = 13.2;
   model.weather.hasTemperatureMaxTodayC = false;
+  model.weather.hasWarning = false;
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
   TEST_ASSERT_EQUAL(0, (int)layout.weatherDetailLines.size());
+}
+
+void test_weather_warning_kept_separate_from_detail_lines() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.weather.hasApparentTemperatureC = false;
+  model.weather.hasRelativeHumidityPercent = false;
+  model.weather.hasPrecipitationMm = false;
+  model.weather.hasRainChanceNext6HoursPercent = false;
+  model.weather.hasPressureMslHpa = false;
+  model.weather.hasTemperatureMinTodayC = true;
+  model.weather.temperatureMinTodayC = 13.2;
+  model.weather.hasTemperatureMaxTodayC = true;
+  model.weather.temperatureMaxTodayC = 26.8;
+  model.weather.hasWarning = true;
+  model.weather.warningLevel = "yellow";
+  model.weather.warningEvent = "Yellow thunderstorm warning";
+  model.weather.warningHeadline = "Small risk of flooding.";
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  TEST_ASSERT_EQUAL(1, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL_STRING("Min 13.2C / Max 26.8C", layout.weatherDetailLines[0].c_str());
+  TEST_ASSERT_TRUE(layout.hasWeatherWarning);
+  TEST_ASSERT_EQUAL_STRING(
+      "Yellow thunderstorm warning", layout.weatherWarningText.c_str());
+}
+
+void test_weather_warning_text_truncated_when_too_long() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.weather.hasApparentTemperatureC = false;
+  model.weather.hasRelativeHumidityPercent = false;
+  model.weather.hasPrecipitationMm = false;
+  model.weather.hasRainChanceNext6HoursPercent = false;
+  model.weather.hasPressureMslHpa = false;
+  model.weather.hasTemperatureMinTodayC = false;
+  model.weather.hasTemperatureMaxTodayC = false;
+  model.weather.hasWarning = true;
+  model.weather.warningLevel = "amber";
+  model.weather.warningEvent =
+      "Amber extremely heavy thunderstorm and flash flooding warning";
+  model.weather.warningHeadline = "Danger to life from flash flooding.";
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  TEST_ASSERT_TRUE(layout.hasWeatherWarning);
+  TEST_ASSERT_EQUAL(45, (int)layout.weatherWarningText.size());
+  TEST_ASSERT_EQUAL_STRING("...", layout.weatherWarningText.c_str() + 42);
+}
+
+void test_weather_warning_absent_leaves_flag_and_text_unset() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.weather.hasApparentTemperatureC = false;
+  model.weather.hasRelativeHumidityPercent = false;
+  model.weather.hasPrecipitationMm = false;
+  model.weather.hasRainChanceNext6HoursPercent = false;
+  model.weather.hasPressureMslHpa = false;
+  model.weather.hasTemperatureMinTodayC = false;
+  model.weather.hasTemperatureMaxTodayC = false;
+  model.weather.hasWarning = false;
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  TEST_ASSERT_EQUAL(0, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_FALSE(layout.hasWeatherWarning);
+  TEST_ASSERT_EQUAL_STRING("", layout.weatherWarningText.c_str());
 }
 
 void test_electricity_rows_capped_at_sixteen_slots() {
@@ -468,6 +539,9 @@ int main(int argc, char **argv) {
   RUN_TEST(test_weather_detail_lines_include_only_present_fields);
   RUN_TEST(test_pressure_and_today_min_max_lines);
   RUN_TEST(test_today_min_max_line_omitted_when_either_missing);
+  RUN_TEST(test_weather_warning_kept_separate_from_detail_lines);
+  RUN_TEST(test_weather_warning_text_truncated_when_too_long);
+  RUN_TEST(test_weather_warning_absent_leaves_flag_and_text_unset);
   RUN_TEST(test_electricity_rows_capped_at_sixteen_slots);
   RUN_TEST(test_electricity_rows_flag_below_average_price);
   RUN_TEST(test_electricity_rows_never_flagged_when_average_unavailable);
