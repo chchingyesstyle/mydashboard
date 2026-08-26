@@ -60,6 +60,13 @@ void parseDeparturesPanel(JsonObject departuresJson, DeparturesPanel& departures
       departure.hasReason = false;
     }
 
+    if (service["finalDestination"]["name"].is<const char*>()) {
+      departure.hasFinalDestination = true;
+      departure.finalDestinationName = service["finalDestination"]["name"].as<const char*>();
+    } else {
+      departure.hasFinalDestination = false;
+    }
+
     departures.services.push_back(departure);
   }
 }

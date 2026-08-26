@@ -12,4 +12,4 @@ struct FetchResult {
 };
 
 bool connectWiFi(uint32_t timeoutMs);
-FetchResult fetchDashboard(const std::string& lastEtag);
+FetchResult fetchDashboard(const std::string& lastEtag, const std::string& routeId);

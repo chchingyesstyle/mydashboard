@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "dashboard_parser.h"
+#include "route_selector.h"
 
 constexpr int kMaxRows = 8;
 
@@ -29,6 +30,8 @@ struct DepartureRow {
   RowEmphasis emphasis;
   bool hasReason;
   std::string reasonText;
+  bool hasDestination;
+  std::string destinationText;
 };
 
 struct ElectricityRow {
@@ -38,6 +41,7 @@ struct ElectricityRow {
 };
 
 struct LayoutResult {
+  std::string routeTitle;
   std::string statusBannerText;
   bool hasWeatherText;
   std::string weatherText;
@@ -51,7 +55,8 @@ struct LayoutResult {
 };
 
 LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent = -1,
-                           const std::string& lastRefreshText = "");
+                           const std::string& lastRefreshText = "",
+                           RouteMode mode = RouteMode::Commute);
 
 int batteryPercentFromVoltage(double voltage);
 

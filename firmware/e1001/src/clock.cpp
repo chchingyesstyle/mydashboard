@@ -19,7 +19,7 @@ constexpr const char* kMonthNames[12] = {
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 }  // namespace
 
-std::string syncAndFormatLocalTime() {
+bool syncLocalTime(struct tm& outTime) {
   configTzTime(kLondonTz, kNtpServer);
 
   time_t now = 0;
@@ -30,11 +30,14 @@ std::string syncAndFormatLocalTime() {
   }
 
   if (now < kMinPlausibleEpoch) {
-    return "";
+    return false;
   }
 
-  struct tm timeinfo;
-  localtime_r(&now, &timeinfo);
+  localtime_r(&now, &outTime);
+  return true;
+}
+
+std::string formatLocalTime(const struct tm& timeinfo) {
   char buffer[24];
   snprintf(buffer, sizeof(buffer), "%s %d %s  %02d:%02d",
            kWeekdayNames[timeinfo.tm_wday], timeinfo.tm_mday,

@@ -18,6 +18,8 @@ struct ParsedDeparture {
   bool isCancelled;
   bool hasReason;
   std::string reason;
+  bool hasFinalDestination;
+  std::string finalDestinationName;
 };
 
 struct DeparturesPanel {

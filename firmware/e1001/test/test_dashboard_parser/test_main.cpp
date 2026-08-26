@@ -21,7 +21,7 @@ void test_parses_live_departure_with_all_fields() {
           "platformStatus": "live",
           "operator": "London Northwestern Railway",
           "operatorCode": "LM",
-          "finalDestination": null,
+          "finalDestination": {"name": "London Euston", "crs": "EUS"},
           "coachCount": 8,
           "status": "on_time",
           "isCancelled": false,
@@ -66,6 +66,47 @@ void test_parses_live_departure_with_all_fields() {
   TEST_ASSERT_EQUAL(8, departure.coachCount);
   TEST_ASSERT_FALSE(departure.isCancelled);
   TEST_ASSERT_FALSE(departure.hasReason);
+  TEST_ASSERT_TRUE(departure.hasFinalDestination);
+  TEST_ASSERT_EQUAL_STRING("London Euston", departure.finalDestinationName.c_str());
+}
+
+void test_final_destination_absent_when_null() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "All destinations", "crs": ""}},
+    "departures": {
+      "status": "live",
+      "updatedAt": "2026-08-24T08:00:00.000Z",
+      "stale": false,
+      "services": [
+        {
+          "id": "xyz789",
+          "scheduledDeparture": "2026-08-24T08:47:00+01:00",
+          "expectedDeparture": "2026-08-24T08:47:00+01:00",
+          "expectedDisplay": "On time",
+          "platform": "9",
+          "platformStatus": "live",
+          "operator": "London Northwestern Railway",
+          "operatorCode": "LM",
+          "finalDestination": null,
+          "coachCount": null,
+          "status": "on_time",
+          "isCancelled": false,
+          "reason": null
+        }
+      ],
+      "error": null
+    },
+    "weather": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "temperatureC": 12.4, "condition": "Partly cloudy", "error": null},
+    "electricity": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "prices": [], "error": null}
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_FALSE(result.model.departures.services[0].hasFinalDestination);
 }
 
 void test_handles_null_platform_null_coach_count_and_cancelled_service() {
@@ -408,6 +449,7 @@ void test_rejects_dashboard_missing_electricity_panel() {
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_parses_live_departure_with_all_fields);
+  RUN_TEST(test_final_destination_absent_when_null);
   RUN_TEST(test_handles_null_platform_null_coach_count_and_cancelled_service);
   RUN_TEST(test_parses_weather_panel_and_dashboard_status);
   RUN_TEST(test_weather_code_absent_when_null);

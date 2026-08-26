@@ -114,8 +114,9 @@ int batteryPercentFromVoltage(double voltage) {
 }
 
 LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent,
-                           const std::string& lastRefreshText) {
+                           const std::string& lastRefreshText, RouteMode mode) {
   LayoutResult layout;
+  layout.routeTitle = routeTitleForMode(mode);
   layout.batteryPercent = batteryPercent;
   layout.lastRefreshText = lastRefreshText;
   layout.statusBannerText = bannerTextFor(model.status);
@@ -142,7 +143,14 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
     row.time = extractTimeOfDay(departure.scheduledDeparture);
     row.statusText = departure.expectedDisplay;
     row.platformText = departure.hasPlatform ? ("Platform " + departure.platform) : "Platform TBC";
-    row.operatorText = departure.operatorName;
+    if (mode == RouteMode::AllDepartures) {
+      row.operatorText = departure.operatorCode;
+      row.hasDestination = departure.hasFinalDestination;
+      row.destinationText = departure.finalDestinationName;
+    } else {
+      row.operatorText = departure.operatorName;
+      row.hasDestination = false;
+    }
     row.hasCoachText = departure.hasCoachCount;
     if (row.hasCoachText) {
       row.coachText = std::to_string(departure.coachCount) + " coaches";

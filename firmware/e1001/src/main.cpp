@@ -10,6 +10,7 @@
 #include "dashboard_parser.h"
 #include "layout.h"
 #include "render.h"
+#include "route_selector.h"
 
 namespace {
 constexpr uint64_t kSleepMicroseconds = 5ULL * 60 * 1000000;
@@ -45,7 +46,12 @@ void setup() {
     return;
   }
 
-  FetchResult fetch = fetchDashboard(std::string(storedEtag));
+  struct tm timeinfo;
+  bool hasTime = syncLocalTime(timeinfo);
+  RouteMode mode = hasTime ? routeModeForHour(timeinfo.tm_hour) : RouteMode::Commute;
+  std::string lastRefreshText = hasTime ? formatLocalTime(timeinfo) : "";
+
+  FetchResult fetch = fetchDashboard(std::string(storedEtag), routeIdForMode(mode));
 
   if (fetch.status == FetchStatus::NotModified) {
     Serial0.println("304 Not Modified, skipping redraw");
@@ -53,8 +59,8 @@ void setup() {
     ParseResult parsed = parseDashboard(fetch.body);
     if (parsed.ok) {
       int batteryPercent = batteryPercentFromVoltage(readBatteryVoltage());
-      std::string lastRefreshText = syncAndFormatLocalTime();
-      LayoutResult layout = computeLayout(parsed.model, kMaxRows, batteryPercent, lastRefreshText);
+      LayoutResult layout =
+          computeLayout(parsed.model, kMaxRows, batteryPercent, lastRefreshText, mode);
       renderDashboard(layout);
       strncpy(storedEtag, fetch.etag.c_str(), sizeof(storedEtag) - 1);
       storedEtag[sizeof(storedEtag) - 1] = '\0';

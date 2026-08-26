@@ -12,7 +12,9 @@ ParsedDeparture makeDeparture(const std::string& scheduledDeparture,
                                int coachCount,
                                bool isCancelled,
                                bool hasReason = false,
-                               const std::string& reason = "") {
+                               const std::string& reason = "",
+                               bool hasFinalDestination = false,
+                               const std::string& finalDestinationName = "") {
   ParsedDeparture departure;
   departure.scheduledDeparture = scheduledDeparture;
   departure.expectedDisplay = expectedDisplay;
@@ -25,6 +27,8 @@ ParsedDeparture makeDeparture(const std::string& scheduledDeparture,
   departure.isCancelled = isCancelled;
   departure.hasReason = hasReason;
   departure.reason = reason;
+  departure.hasFinalDestination = hasFinalDestination;
+  departure.finalDestinationName = finalDestinationName;
   return departure;
 }
 
@@ -47,6 +51,47 @@ void test_extracts_time_of_day_and_platform_text() {
   TEST_ASSERT_EQUAL_STRING("8 coaches", layout.rows[0].coachText.c_str());
   TEST_ASSERT_TRUE(layout.rows[0].emphasis == RowEmphasis::Normal);
   TEST_ASSERT_FALSE(layout.rows[0].hasReason);
+}
+
+void test_commute_mode_shows_operator_name_without_destination() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.departures.services.push_back(makeDeparture(
+      "2026-08-24T08:47:00+01:00", "On time", true, "9", true, 8, false,
+      false, "", true, "London Euston"));
+
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", RouteMode::Commute);
+
+  TEST_ASSERT_EQUAL_STRING("Watford to Euston", layout.routeTitle.c_str());
+  TEST_ASSERT_EQUAL_STRING("London Northwestern Railway", layout.rows[0].operatorText.c_str());
+  TEST_ASSERT_FALSE(layout.rows[0].hasDestination);
+}
+
+void test_all_departures_mode_shows_operator_code_and_destination() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.departures.services.push_back(makeDeparture(
+      "2026-08-24T08:47:00+01:00", "On time", true, "9", true, 8, false,
+      false, "", true, "London Euston"));
+
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", RouteMode::AllDepartures);
+
+  TEST_ASSERT_EQUAL_STRING("Watford Junction Departures", layout.routeTitle.c_str());
+  TEST_ASSERT_EQUAL_STRING("LM", layout.rows[0].operatorText.c_str());
+  TEST_ASSERT_TRUE(layout.rows[0].hasDestination);
+  TEST_ASSERT_EQUAL_STRING("London Euston", layout.rows[0].destinationText.c_str());
+}
+
+void test_all_departures_mode_omits_destination_when_unknown() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.departures.services.push_back(makeDeparture(
+      "2026-08-24T08:47:00+01:00", "On time", true, "9", false, 0, false,
+      false, "", false, ""));
+
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", RouteMode::AllDepartures);
+
+  TEST_ASSERT_FALSE(layout.rows[0].hasDestination);
 }
 
 void test_null_platform_and_coach_count_produce_fallback_text() {
@@ -340,6 +385,9 @@ void test_battery_percent_from_voltage_clamps_out_of_range() {
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_extracts_time_of_day_and_platform_text);
+  RUN_TEST(test_commute_mode_shows_operator_name_without_destination);
+  RUN_TEST(test_all_departures_mode_shows_operator_code_and_destination);
+  RUN_TEST(test_all_departures_mode_omits_destination_when_unknown);
   RUN_TEST(test_null_platform_and_coach_count_produce_fallback_text);
   RUN_TEST(test_delayed_departure_gets_delayed_emphasis);
   RUN_TEST(test_row_count_is_capped_at_max_rows);

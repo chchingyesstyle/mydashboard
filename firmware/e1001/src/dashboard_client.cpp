@@ -27,7 +27,7 @@ bool connectWiFi(uint32_t timeoutMs) {
   return true;
 }
 
-FetchResult fetchDashboard(const std::string& lastEtag) {
+FetchResult fetchDashboard(const std::string& lastEtag, const std::string& routeId) {
   FetchResult result;
   result.status = FetchStatus::Failed;
 
@@ -36,8 +36,10 @@ FetchResult fetchDashboard(const std::string& lastEtag) {
   WiFiClientSecure client;
   client.setInsecure();
 
+  std::string url = std::string(kDashboardUrl) + "?route=" + routeId;
+
   HTTPClient http;
-  if (!http.begin(client, kDashboardUrl)) {
+  if (!http.begin(client, url.c_str())) {
     return result;
   }
 

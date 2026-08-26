@@ -30,7 +30,7 @@ void drawHeader(const LayoutResult& layout) {
   display.setFont(&FreeSans12pt7b);
   display.setTextColor(GxEPD_BLACK);
   display.setCursor(10, 26);
-  display.print("Watford to Euston");
+  display.print(layout.routeTitle.c_str());
 
   std::string rightText;
   if (!layout.lastRefreshText.empty()) {
@@ -68,7 +68,11 @@ void drawDepartureRows(const LayoutResult& layout) {
     display.print(row.statusText.c_str());
 
     display.setCursor(6, y + 42);
-    std::string secondLine = row.platformText + "  " + row.operatorText;
+    std::string secondLine = row.platformText + "  ";
+    if (row.hasDestination) {
+      secondLine += "to " + row.destinationText + "  ";
+    }
+    secondLine += row.operatorText;
     if (row.hasCoachText) {
       secondLine += "  " + row.coachText;
     }
