@@ -304,6 +304,35 @@ describe("dashboard rendering", () => {
     expect(queryByRole(root, "list", { name: /forecast/i })).toBeNull();
   });
 
+  it("shows an active weather warning banner", () => {
+    const root = render({
+      ...livePayload,
+      weather: {
+        ...livePayload.weather,
+        warning: {
+          level: "yellow",
+          event: "Yellow thunderstorm warning",
+          headline: "A small risk of flooding and disruption from thunderstorms."
+        }
+      }
+    });
+    const weather = getByRole(root, "region", { name: "Current weather" });
+
+    const banner = weather.querySelector(".weather-warning-yellow");
+    expect(banner).toBeTruthy();
+    expect(banner?.getAttribute("role")).toBe("alert");
+    expect(within(weather).getByText("Yellow thunderstorm warning")).toBeTruthy();
+    expect(within(weather).getByText(
+      "A small risk of flooding and disruption from thunderstorms."
+    )).toBeTruthy();
+  });
+
+  it("omits the weather warning banner when there is no active warning", () => {
+    const weather = getByRole(render(), "region", { name: "Current weather" });
+
+    expect(weather.querySelector(".weather-warning")).toBeNull();
+  });
+
   it("matches the weather icon to the current condition", () => {
     const cases = [
       [0, "Clear sky", "icon-sun"],

@@ -2,7 +2,8 @@ import type {
   DashboardPayload,
   Departure,
   DeparturesPanel,
-  WeatherPanel
+  WeatherPanel,
+  WeatherWarning
 } from "../shared/contracts";
 import { ROUTES } from "../shared/contracts";
 import { updateThemeControl } from "./theme";
@@ -329,6 +330,22 @@ function weatherValue(
   return [name, value];
 }
 
+function weatherWarningBanner(warning: WeatherWarning): HTMLElement {
+  const banner = element("div", {
+    className: `weather-warning weather-warning-${warning.level}`
+  });
+  banner.setAttribute("role", "alert");
+  banner.appendChild(element("p", {
+    className: "weather-warning-event",
+    text: warning.event
+  }));
+  banner.appendChild(element("p", {
+    className: "weather-warning-headline",
+    text: warning.headline
+  }));
+  return banner;
+}
+
 function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
   const section = element("section", { className: "weather-panel" });
   const heading = element("h2", { text: "Current weather" });
@@ -352,6 +369,10 @@ function renderWeather(panel: WeatherPanel, now: Date): HTMLElement {
     alert.setAttribute("role", "alert");
     section.appendChild(alert);
     return section;
+  }
+
+  if (panel.warning !== null) {
+    section.appendChild(weatherWarningBanner(panel.warning));
   }
 
   const summary = element("div", { className: "weather-summary" });

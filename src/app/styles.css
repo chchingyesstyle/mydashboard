@@ -11,6 +11,8 @@
   --text: oklch(0.25 0.018 255);
   --text-muted: oklch(0.46 0.025 253);
   --line: oklch(0.74 0.018 253 / 72%);
+  --yellow: oklch(0.82 0.19 100);
+  --yellow-soft: oklch(0.82 0.19 100 / 26%);
   --amber: oklch(0.55 0.13 76);
   --amber-soft: oklch(0.55 0.13 76 / 12%);
   --red: oklch(0.54 0.15 25);
@@ -28,6 +30,8 @@
   --text: oklch(0.93 0.012 83);
   --text-muted: oklch(0.72 0.018 253);
   --line: oklch(0.42 0.018 253 / 52%);
+  --yellow: oklch(0.88 0.19 100);
+  --yellow-soft: oklch(0.88 0.19 100 / 22%);
   --amber: oklch(0.8 0.13 76);
   --amber-soft: oklch(0.8 0.13 76 / 13%);
   --red: oklch(0.7 0.13 25);
@@ -397,6 +401,42 @@ button {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
+}
+
+.weather-warning {
+  margin-top: clamp(0.75rem, 1.6vw, 1.1rem);
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-left-width: 0.3rem;
+  line-height: 1.4;
+}
+
+.weather-warning-yellow {
+  border-left-color: var(--yellow);
+  background: var(--yellow-soft);
+}
+
+.weather-warning-amber {
+  border-left-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.weather-warning-red {
+  border-left-color: var(--red);
+  background: var(--red-soft);
+}
+
+.weather-warning-event {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(0.85rem, 1.1vw, 0.95rem);
+  font-weight: 720;
+}
+
+.weather-warning-headline {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 
 .weather-summary {
