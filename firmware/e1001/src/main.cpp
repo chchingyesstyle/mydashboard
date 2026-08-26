@@ -18,13 +18,21 @@ constexpr uint64_t kSleepMicroseconds = 5ULL * 60 * 1000000;
 // the ESP32-S3 and Seeed's own docs warn against using it as a wake source,
 // since it can interfere with future USB firmware uploads.
 constexpr gpio_num_t kRefreshButtonPin = GPIO_NUM_4;
+// Left white button. GPIO5 is not a boot-strapping pin, so it's safe to use
+// as a second wake source. Wakes and shows the opposite of whatever the
+// time-based route mode would pick, for that one screen only.
+constexpr gpio_num_t kOverrideButtonPin = GPIO_NUM_5;
+constexpr uint64_t kButtonWakeMask =
+    (1ULL << kRefreshButtonPin) | (1ULL << kOverrideButtonPin);
 RTC_DATA_ATTR char storedEtag[128] = "";
 
 void goToSleep() {
   WiFi.disconnect(true);
   rtc_gpio_pullup_en(kRefreshButtonPin);
   rtc_gpio_pulldown_dis(kRefreshButtonPin);
-  esp_sleep_enable_ext0_wakeup(kRefreshButtonPin, 0);
+  rtc_gpio_pullup_en(kOverrideButtonPin);
+  rtc_gpio_pulldown_dis(kOverrideButtonPin);
+  esp_sleep_enable_ext1_wakeup(kButtonWakeMask, ESP_EXT1_WAKEUP_ANY_LOW);
   esp_sleep_enable_timer_wakeup(kSleepMicroseconds);
   esp_deep_sleep_start();
 }
@@ -33,10 +41,14 @@ void goToSleep() {
 void setup() {
   Serial0.begin(115200);
   delay(200);
+
+  bool wokeFromButton = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1;
+  bool overridePressed = wokeFromButton &&
+      (esp_sleep_get_ext1_wakeup_status() & (1ULL << kOverrideButtonPin)) != 0;
   Serial0.println(
-      esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0
-          ? "E1001 waking up (manual refresh button)"
-          : "E1001 waking up");
+      overridePressed ? "E1001 waking up (mode-override button)"
+      : wokeFromButton ? "E1001 waking up (manual refresh button)"
+                        : "E1001 waking up");
 
   initDisplay();
 
@@ -48,7 +60,8 @@ void setup() {
 
   struct tm timeinfo;
   bool hasTime = syncLocalTime(timeinfo);
-  RouteMode mode = hasTime ? routeModeForHour(timeinfo.tm_hour) : RouteMode::Commute;
+  RouteMode timeBasedMode = hasTime ? routeModeForHour(timeinfo.tm_hour) : RouteMode::Commute;
+  RouteMode mode = effectiveRouteMode(timeBasedMode, overridePressed);
   std::string lastRefreshText = hasTime ? formatLocalTime(timeinfo) : "";
 
   FetchResult fetch = fetchDashboard(std::string(storedEtag), routeIdForMode(mode));

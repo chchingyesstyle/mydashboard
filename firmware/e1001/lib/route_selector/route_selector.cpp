@@ -20,3 +20,8 @@ std::string routeTitleForMode(RouteMode mode) {
   }
   return "Watford to Euston";
 }
+
+RouteMode effectiveRouteMode(RouteMode timeBasedMode, bool overridePressed) {
+  if (!overridePressed) return timeBasedMode;
+  return timeBasedMode == RouteMode::Commute ? RouteMode::AllDepartures : RouteMode::Commute;
+}

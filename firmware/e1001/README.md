@@ -83,10 +83,18 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   battery-life rating assumes, so expect meaningfully shorter battery life
   in practice.
 - **Manual refresh:** press the **right white button** (GPIO4) to wake and
-  refresh immediately, bypassing the 5-minute timer. The **green button**
-  (GPIO3) is deliberately not used for this — it's an ESP32-S3
-  boot-strapping pin, and Seeed's own documentation warns that using it as
-  a wake source can interfere with future USB firmware uploads.
+  refresh immediately, bypassing the 5-minute timer.
+- **Mode override:** press the **left white button** (GPIO5) to wake and
+  refresh showing the *opposite* of whatever the time-based route mode
+  would pick, for that one screen only — the next wake (timer or either
+  button) re-derives the mode from the clock, so it reverts automatically.
+  Both buttons wake the device via `esp_sleep_enable_ext1_wakeup()`;
+  `esp_sleep_get_ext1_wakeup_status()` tells `main.cpp` which one fired.
+  The **green button** (GPIO3) is deliberately not used for either of
+  these — it's an ESP32-S3 boot-strapping pin (it straps the JTAG signal
+  source), and Seeed's own documentation warns that using it as a wake
+  source can interfere with future USB firmware uploads. GPIO5 isn't a
+  strapping pin, so it doesn't carry that risk.
 - **Battery percentage:** read via GPIO21 (enable) / GPIO1 (ADC, 12dB
   attenuation, 2x divider compensation) and mapped to a percentage using
   Seeed's published reTerminal E1001 discharge curve. Shown at the top
