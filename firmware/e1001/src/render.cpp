@@ -3,9 +3,9 @@
 #include <cmath>
 
 #include <Fonts/FreeSans12pt7b.h>
-#include <Fonts/FreeSans18pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold18pt7b.h>
+#include <Fonts/FreeSansBold24pt7b.h>
 #include <GxEPD2_BW.h>
 #include <SPI.h>
 
@@ -103,67 +103,67 @@ void drawSunRays(int cx, int cy, int radius) {
 void drawWeatherIcon(WeatherIconKind kind, int cx, int cy) {
   switch (kind) {
     case WeatherIconKind::Sun:
-      display.fillCircle(cx, cy, 16, GxEPD_BLACK);
-      drawSunRays(cx, cy, 16);
+      display.fillCircle(cx, cy, 20, GxEPD_BLACK);
+      drawSunRays(cx, cy, 20);
       break;
     case WeatherIconKind::PartlyCloudy:
-      display.fillCircle(cx + 10, cy - 14, 10, GxEPD_BLACK);
-      drawSunRays(cx + 10, cy - 14, 10);
-      drawCloud(cx - 4, cy + 6, 12);
+      display.fillCircle(cx + 13, cy - 16, 13, GxEPD_BLACK);
+      drawSunRays(cx + 13, cy - 16, 13);
+      drawCloud(cx - 5, cy + 7, 16);
       break;
     case WeatherIconKind::Cloud:
-      drawCloud(cx, cy, 14);
+      drawCloud(cx, cy, 18);
       break;
     case WeatherIconKind::Fog:
-      drawCloud(cx, cy - 10, 12);
+      drawCloud(cx, cy - 12, 16);
       for (int i = 0; i < 3; i++) {
-        int y = cy + 12 + i * 8;
-        display.drawLine(cx - 22, y, cx + 22, y, GxEPD_BLACK);
+        int y = cy + 14 + i * 9;
+        display.drawLine(cx - 26, y, cx + 26, y, GxEPD_BLACK);
       }
       break;
     case WeatherIconKind::Rain:
-      drawCloud(cx, cy - 8, 14);
+      drawCloud(cx, cy - 10, 18);
       for (int i = -1; i <= 1; i++) {
-        int x = cx + i * 14;
-        display.drawLine(x, cy + 14, x - 4, cy + 26, GxEPD_BLACK);
+        int x = cx + i * 16;
+        display.drawLine(x, cy + 16, x - 5, cy + 30, GxEPD_BLACK);
       }
       break;
     case WeatherIconKind::Snow:
-      drawCloud(cx, cy - 8, 14);
+      drawCloud(cx, cy - 10, 18);
       for (int i = -1; i <= 1; i++) {
-        int x = cx + i * 14;
-        int y = cy + 20;
-        display.drawLine(x - 5, y, x + 5, y, GxEPD_BLACK);
-        display.drawLine(x, y - 5, x, y + 5, GxEPD_BLACK);
-        display.drawLine(x - 4, y - 4, x + 4, y + 4, GxEPD_BLACK);
-        display.drawLine(x - 4, y + 4, x + 4, y - 4, GxEPD_BLACK);
+        int x = cx + i * 16;
+        int y = cy + 23;
+        display.drawLine(x - 6, y, x + 6, y, GxEPD_BLACK);
+        display.drawLine(x, y - 6, x, y + 6, GxEPD_BLACK);
+        display.drawLine(x - 5, y - 5, x + 5, y + 5, GxEPD_BLACK);
+        display.drawLine(x - 5, y + 5, x + 5, y - 5, GxEPD_BLACK);
       }
       break;
     case WeatherIconKind::Thunderstorm:
-      drawCloud(cx, cy - 10, 14);
-      display.fillTriangle(cx + 6, cy + 8, cx - 6, cy + 20, cx + 4, cy + 20, GxEPD_BLACK);
-      display.fillTriangle(cx - 6, cy + 20, cx + 4, cy + 20, cx - 4, cy + 32, GxEPD_BLACK);
+      drawCloud(cx, cy - 12, 18);
+      display.fillTriangle(cx + 7, cy + 9, cx - 7, cy + 23, cx + 5, cy + 23, GxEPD_BLACK);
+      display.fillTriangle(cx - 7, cy + 23, cx + 5, cy + 23, cx - 5, cy + 37, GxEPD_BLACK);
       break;
   }
 }
 
 void drawWeather(const LayoutResult& layout) {
-  int y = kHeaderHeight + 30;
-  display.setFont(&FreeSansBold18pt7b);
+  int y = kHeaderHeight + 34;
+  display.setFont(&FreeSansBold24pt7b);
   display.setCursor(kColumnDividerX + 10, y);
   if (layout.hasWeatherText) {
     display.print(layout.weatherText.c_str());
   }
   if (layout.hasWeatherIcon) {
-    drawWeatherIcon(layout.weatherIconKind, kColumnDividerX + 200, y - 16);
+    drawWeatherIcon(layout.weatherIconKind, kColumnDividerX + 215, y - 14);
   }
 
   display.setFont(&FreeSans12pt7b);
-  y += 30;
+  y += 40;
   for (const auto& line : layout.weatherDetailLines) {
     display.setCursor(kColumnDividerX + 10, y);
     display.print(line.c_str());
-    y += 24;
+    y += 22;
   }
 }
 
