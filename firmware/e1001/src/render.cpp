@@ -28,8 +28,13 @@ constexpr int kRightColumnMidY = kHeaderHeight + (kScreenHeight - kHeaderHeight)
 GxEPD2_BW<GxEPD2_750_GDEY075T7, GxEPD2_750_GDEY075T7::HEIGHT> display(
     GxEPD2_750_GDEY075T7(kEpdCsPin, kEpdDcPin, kEpdResPin, kEpdBusyPin));
 
-std::string headerRightText(const std::string& lastRefreshText,
-                             const std::string& statusBannerText, int batteryPercent) {
+void drawHeader(const std::string& routeTitle, const std::string& lastRefreshText,
+                 const std::string& statusBannerText, int batteryPercent) {
+  display.setFont(&FreeSans12pt7b);
+  display.setTextColor(GxEPD_BLACK);
+  display.setCursor(10, 26);
+  display.print(routeTitle.c_str());
+
   std::string rightText;
   if (!lastRefreshText.empty()) {
     rightText += lastRefreshText + "  ";
@@ -38,27 +43,12 @@ std::string headerRightText(const std::string& lastRefreshText,
   if (batteryPercent >= 0) {
     rightText += "  " + std::to_string(batteryPercent) + "%";
   }
-  return rightText;
-}
 
-void drawHeaderRightText(const std::string& rightText) {
-  display.setFont(&FreeSans12pt7b);
-  display.setTextColor(GxEPD_BLACK);
   int16_t x1, y1;
   uint16_t textWidth, textHeight;
   display.getTextBounds(rightText.c_str(), 0, 0, &x1, &y1, &textWidth, &textHeight);
   display.setCursor(kScreenWidth - 10 - static_cast<int>(textWidth), 26);
   display.print(rightText.c_str());
-}
-
-void drawHeader(const std::string& routeTitle, const std::string& lastRefreshText,
-                 const std::string& statusBannerText, int batteryPercent) {
-  display.setFont(&FreeSans12pt7b);
-  display.setTextColor(GxEPD_BLACK);
-  display.setCursor(10, 26);
-  display.print(routeTitle.c_str());
-
-  drawHeaderRightText(headerRightText(lastRefreshText, statusBannerText, batteryPercent));
 }
 
 void drawDepartureRows(const LayoutResult& layout) {
@@ -340,31 +330,6 @@ void renderDashboard(const LayoutResult& layout) {
     }
     drawWeather(layout);
     drawElectricity(layout);
-  } while (display.nextPage());
-
-  display.hibernate();
-}
-
-void updateClockOnly(const std::string& lastRefreshText,
-                      const std::string& statusBannerText, int batteryPercent) {
-  display.setFont(&FreeSans12pt7b);
-  std::string rightText = headerRightText(lastRefreshText, statusBannerText, batteryPercent);
-
-  int16_t x1, y1;
-  uint16_t textWidth, textHeight;
-  display.getTextBounds(rightText.c_str(), 0, 0, &x1, &y1, &textWidth, &textHeight);
-
-  int windowX = kScreenWidth - 10 - static_cast<int>(textWidth) - 10;
-  if (windowX < 0) windowX = 0;
-  int windowY = 0;
-  int windowW = kScreenWidth - windowX;
-  int windowH = kHeaderHeight;
-
-  display.setPartialWindow(windowX, windowY, windowW, windowH);
-  display.firstPage();
-  do {
-    display.fillRect(windowX, windowY, windowW, windowH, GxEPD_WHITE);
-    drawHeaderRightText(rightText);
   } while (display.nextPage());
 
   display.hibernate();

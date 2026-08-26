@@ -67,10 +67,3 @@ int nextScreenCycleIndex(int currentIndex, bool overrideButtonPressed,
 int sleepMinutesForHour(int hourOfDay) {
   return routeModeForHour(hourOfDay) == RouteMode::Commute ? 2 : 15;
 }
-
-bool shouldDoFullRefresh(bool wokeFromButton, bool hasKnownTime,
-                          int minutesSinceFullRefresh, int fullRefreshIntervalMinutes) {
-  if (wokeFromButton) return true;
-  if (!hasKnownTime) return true;
-  return minutesSinceFullRefresh >= fullRefreshIntervalMinutes;
-}

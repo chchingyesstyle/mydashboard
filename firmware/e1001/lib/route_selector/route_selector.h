@@ -47,18 +47,7 @@ Screen screenForCycleIndex(int index);
 int nextScreenCycleIndex(int currentIndex, bool overrideButtonPressed,
                           Screen timeBasedDefault);
 
-// How many minutes should elapse between full (WiFi + fetch + full-screen
-// redraw) refreshes: 2 minutes during the 6am-9am commute window (fresher
-// departure data when it matters most), 15 minutes otherwise (battery
-// saving). The device still wakes every minute regardless, to tick a
-// partial-refresh clock; this only decides which of those wakes upgrades
-// to a full refresh.
+// The deep-sleep wake interval, in minutes, for the device's timer wake
+// source: 2 minutes during the 6am-9am commute window (fresher departure
+// data when it matters most), 15 minutes otherwise (battery saving).
 int sleepMinutesForHour(int hourOfDay);
-
-// Whether this wake should do a full refresh rather than a cheap,
-// network-free clock-only partial update. True when a button was pressed
-// (both always force an immediate full refresh), when there's no
-// previously-synced clock to judge elapsed time from, or when at least
-// fullRefreshIntervalMinutes have passed since the last full refresh.
-bool shouldDoFullRefresh(bool wokeFromButton, bool hasKnownTime,
-                          int minutesSinceFullRefresh, int fullRefreshIntervalMinutes);

@@ -78,23 +78,14 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
 
 ## Hardware notes
 
-- **Refresh cadence:** the device always wakes on a fixed **1-minute**
-  timer, but most of those wakes are a cheap, WiFi-free "clock tick" —
-  `readLocalTimeOffline()` reads the ESP32's RTC (which keeps counting
-  through deep sleep) with no network round trip, and `updateClockOnly()`
-  redraws just the header's time text via a fast e-ink **partial**
-  refresh. Only every `sleepMinutesForHour()`-th wake (2 minutes during
-  the 6am-9am commute window, 15 minutes otherwise) is a **full** refresh
-  — WiFi connect, NTP resync, API fetch, full-screen redraw — tracked via
-  `RTC_DATA_ATTR int minutesSinceFullRefresh` and decided by
-  `shouldDoFullRefresh()`. A button press always forces a full refresh
-  immediately. `hasOfflineTime` false (RTC never synced, e.g. first boot)
-  also forces one, since there's no clock to tick with yet. This is an
-  experiment to see whether skipping WiFi/NTP/fetch on most wakes offsets
-  the extra e-ink partial-refresh wake count — even the 15-minute-interval
-  full refreshes alone are already far more frequent than the ~6-hour
-  interval Seeed's 3-month battery-life rating assumes, so expect
-  meaningfully shorter battery life regardless.
+- **Refresh cadence:** wakes from deep sleep every **2 minutes during the
+  6am-9am commute window** (fresher departure data when it matters most)
+  and every **15 minutes otherwise** (battery saving). `hasTime` false
+  (NTP sync failed) falls back to a fixed 5 minutes. Even the 15-minute
+  off-peak interval is far more frequent than the ~6-hour interval
+  Seeed's 3-month battery-life rating assumes, so expect meaningfully
+  shorter battery life in practice. Selection logic is
+  `sleepMinutesForHour()` in `lib/route_selector`.
 - **Four screens:** Commute (Watford -> Euston, WFJ-EUS), AllDepartures
   (all Watford Junction departures, WFJ-ALL), SevenDayWeather, and
   TwelveHourWeather (both WFJ-ALL, since Watford's weather panel doesn't
