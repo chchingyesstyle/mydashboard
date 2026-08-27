@@ -95,7 +95,7 @@ void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::stri
     lines.push_back("Humidity " + formatWholeNumber(weather.relativeHumidityPercent) + "%");
   }
   if (weather.hasPrecipitationMm) {
-    lines.push_back("Precip " + formatWholeNumber(weather.precipitationMm) + "mm");
+    lines.push_back("Precip " + formatOneDecimal(weather.precipitationMm) + "mm");
   }
   if (weather.hasRainChanceNext6HoursPercent) {
     lines.push_back("Rain (6h) " + formatWholeNumber(weather.rainChanceNext6HoursPercent) + "%");

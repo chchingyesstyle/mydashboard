@@ -245,6 +245,25 @@ void test_weather_detail_lines_include_only_present_fields() {
   TEST_ASSERT_EQUAL_STRING("Rain (6h) 20%", layout.weatherDetailLines[2].c_str());
 }
 
+void test_precipitation_line_keeps_one_decimal_place() {
+  DashboardModel model;
+  model.status = DashboardStatus::Live;
+  model.weather.hasApparentTemperatureC = false;
+  model.weather.hasRelativeHumidityPercent = false;
+  model.weather.hasPrecipitationMm = true;
+  model.weather.precipitationMm = 0.3;
+  model.weather.hasRainChanceNext6HoursPercent = false;
+  model.weather.hasPressureMslHpa = false;
+  model.weather.hasTemperatureMinTodayC = false;
+  model.weather.hasTemperatureMaxTodayC = false;
+  model.weather.hasWarning = false;
+
+  LayoutResult layout = computeLayout(model, kMaxRows);
+
+  TEST_ASSERT_EQUAL(1, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL_STRING("Precip 0.3mm", layout.weatherDetailLines[0].c_str());
+}
+
 void test_pressure_and_today_min_max_lines() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
@@ -537,6 +556,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_weather_text_formatting_and_missing_weather);
   RUN_TEST(test_weather_icon_kind_mapping);
   RUN_TEST(test_weather_detail_lines_include_only_present_fields);
+  RUN_TEST(test_precipitation_line_keeps_one_decimal_place);
   RUN_TEST(test_pressure_and_today_min_max_lines);
   RUN_TEST(test_today_min_max_line_omitted_when_either_missing);
   RUN_TEST(test_weather_warning_kept_separate_from_detail_lines);
