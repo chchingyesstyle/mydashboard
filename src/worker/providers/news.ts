@@ -94,7 +94,13 @@ export async function fetchNewsFeed(
   fetcher: typeof fetch,
   source: NewsSource
 ): Promise<NewsFeed> {
-  const response = await fetcher(source.url, { signal: AbortSignal.timeout(7000) });
+  const response = await fetcher(source.url, {
+    headers: {
+      Accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1",
+      "User-Agent": "watford-euston-dashboard/1.0"
+    },
+    signal: AbortSignal.timeout(7000)
+  });
   if (!response.ok) throw new Error("RSS news request failed");
 
   let parsed: unknown;

@@ -49,6 +49,20 @@ describe("RSS news provider", () => {
     });
   });
 
+  it("identifies itself and requests RSS from protected feeds", async () => {
+    let requestInit: RequestInit | undefined;
+    const fetcher = (async (_url: string | URL | Request, init?: RequestInit) => {
+      requestInit = init;
+      return new Response(rthkNewsFixture);
+    }) as typeof fetch;
+
+    await fetchNewsFeed(fetcher, HONG_KONG_NEWS_SOURCE);
+
+    const headers = new Headers(requestInit?.headers);
+    expect(headers.get("accept")).toContain("application/rss+xml");
+    expect(headers.get("user-agent")).toBe("watford-euston-dashboard/1.0");
+  });
+
   it("keeps available valid stories when a feed has fewer than five", async () => {
     const feed = await fetchNewsFeed(
       (async () => new Response(rthkNewsFixture.replace(
