@@ -4,6 +4,13 @@ Supersedes `docs/superpowers/specs/2026-08-24-e1001-sensecraft-dashboard-design.
 That spec used Seeed's no-code SenseCraft HMI platform; this one replaces it
 with custom Arduino firmware for full parity with the web dashboard.
 
+The shipped firmware is extended by the bidirectional-route, two-column Agile,
+and news specifications linked from the project README. The current screen
+cycle includes Commute, SevenDayWeather, TwelveHourWeather, HongKongNews,
+UkNews, and AllDepartures; the forecast and news screens use the all-
+destinations `WFJ-ALL` route while retaining the right-hand weather and
+electricity column.
+
 ## Purpose
 
 Display the Watford Junction to Euston live dashboard on a battery-powered
@@ -99,6 +106,10 @@ build.
   the web dashboard's status text.
 - **Weather**: compact, showing `weather.temperatureC` and
   `weather.condition` only.
+- **Forecast/news rendering**: the Next 12 Hours column headings are placed
+  below the global title strip, preventing the `Rain`/`Temp` labels from
+  overlapping the screen title. News screens show three top stories and six
+  latest stories; latest titles can wrap to two lines.
 
 ## Testing
 

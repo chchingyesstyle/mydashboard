@@ -1,5 +1,9 @@
 # Building the E1001 dashboard in SenseCraft HMI
 
+> **Superseded.** The project now uses the custom PlatformIO firmware in
+> [`firmware/e1001/`](../firmware/e1001/README.md). Keep this no-code guide for
+> historical reference only; do not use it to update the deployed device.
+
 Follow this after the design in
 `docs/superpowers/specs/2026-08-24-e1001-sensecraft-dashboard-design.md` has
 been approved. This is a manual, no-code build in Seeed's SenseCraft HMI web

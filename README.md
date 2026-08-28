@@ -18,8 +18,9 @@ departures without horizontal scrolling.
 A companion firmware project in [`firmware/e1001/`](firmware/e1001/README.md)
 runs this same public API on a battery-powered Seeed reTerminal E1001 ePaper
 display, adding a two-column departures/weather/electricity-price layout
-suited to a small always-on screen. See that directory's own README for
-building and flashing it.
+suited to a small always-on screen. Its manual cycle also includes the seven-
+day forecast, next-12-hours forecast, and Hong Kong/UK news screens; see that
+directory's own README for building and flashing it.
 
 ## Local development
 
@@ -67,6 +68,12 @@ npx playwright install chromium
   public Agile tariff API (no authentication required) for tariff
   `E-1R-AGILE-24-10-01-A`, cached for 15 minutes. This panel is API-only — the
   browser dashboard does not display it; it exists for the E1001 firmware.
+- News comes from the official [RTHK local-news RSS feed](https://rthk.hk/rthk/news/rss/c_expressnews_clocal.xml)
+  and [BBC News RSS feed](https://feeds.bbci.co.uk/news/rss.xml). Each panel
+  is cached independently for five minutes while fresh and up to 60 minutes
+  as stale fallback. The API keeps the first three editorial headlines in
+  `topStories` and the next six in `latestStories`; the browser does not
+  render these panels, but the E1001 does.
 
 Rail data is provided by National Rail. Weather data is provided by Open-Meteo.
 The same attribution appears in the dashboard footer.
@@ -91,7 +98,7 @@ web app's route switcher.
 
 The versioned response has stable, provider-neutral fields, ISO 8601
 timestamps, compact status enums, CORS support, and independent `departures`,
-`weather`, and `electricity` panels. It is what the
+`weather`, `electricity`, and `news` panels. It is what the
 [`firmware/e1001/`](firmware/e1001/README.md) Seeed Studio reTerminal E1001
 ESP32 client polls, without scraping HTML.
 
@@ -106,6 +113,13 @@ half-hour Octopus Agile price slots as `prices: { validFrom, validTo,
 pricePencePerKwh }[]`, with times already converted to Europe/London local
 time. It does not affect the top-level `status`, which is still computed from
 `departures` and `weather` only. This is also an additive field.
+
+`news` is an additive object with `hongKong` and `unitedKingdom` panels. Each
+panel uses the same status shape and contains `topStories` (at most 3) and
+`latestStories` (at most 6); every story has a UTF-8 title, an ISO 8601 UTC
+`publishedAt`, and an article URL. News failures stay local to their panel and
+never change the top-level status. The E1001 renders the titles and converts
+publication times to Europe/London local time.
 
 `weather.dailyForecast` (7 entries: `{ date, weatherCode, temperatureMinC,
 temperatureMaxC, rainChancePercent }`) and `weather.hourlyForecast` (12

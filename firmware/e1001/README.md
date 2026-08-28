@@ -101,6 +101,9 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   Europe/London publication times;
   Hong Kong uses Traditional Chinese labels and glyphs while the UK screen
   uses English labels.
+  On the Next 12 Hours screen, the Rain/Temp column headings sit in a
+  dedicated strip below the global title so they never overlap the screen
+  title.
   Time-based default: Commute from 6am-9am local time, otherwise
   SevenDayWeather.
   Outside Commute, each departure row also shows its destination and

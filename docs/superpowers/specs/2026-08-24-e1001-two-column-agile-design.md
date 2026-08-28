@@ -141,6 +141,9 @@ Screen (800x480) splits into a full-width header strip, then two columns:
     "Ncoa" (e.g. "8coa").
   - Cancelled/delayed visual emphasis (inverted band / bold time) is
     unchanged from the current design.
+- The same left column is reused by the forecast screens. On Next 12 Hours,
+  its `Rain` and `Temp` headings occupy a strip below the global title row so
+  they do not overlap the screen title.
 - **Right column** (480–800px), split top/bottom:
   - **Top half** (weather): current temperature and condition, then
     feels-like, humidity, precipitation, 6-hour rain chance, and
