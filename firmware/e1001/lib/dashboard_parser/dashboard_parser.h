@@ -94,11 +94,33 @@ struct ElectricityPanel {
   double todayAveragePencePerKwh;
 };
 
+struct NewsStory {
+  std::string title;
+  std::string publishedAt;
+  std::string url;
+};
+
+struct NewsPanel {
+  PanelStatus status;
+  bool stale;
+  bool hasUpdatedAt;
+  std::string updatedAt;
+  std::string source;
+  std::vector<NewsStory> topStories;
+  std::vector<NewsStory> latestStories;
+};
+
+struct NewsPanels {
+  NewsPanel hongKong;
+  NewsPanel unitedKingdom;
+};
+
 struct DashboardModel {
   DashboardStatus status;
   DeparturesPanel departures;
   WeatherPanel weather;
   ElectricityPanel electricity;
+  NewsPanels news;
 };
 
 struct ParseResult {

@@ -569,6 +569,129 @@ void test_rejects_dashboard_missing_electricity_panel() {
   TEST_ASSERT_FALSE(result.ok);
 }
 
+void test_parses_live_and_stale_news_panels_with_utf8_titles() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "temperatureC": 12.4, "condition": "Partly cloudy", "error": null},
+    "electricity": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "prices": [], "error": null},
+    "news": {
+      "hongKong": {
+        "status": "live",
+        "updatedAt": "2026-08-24T08:00:00.000Z",
+        "stale": false,
+        "source": "RTHK News",
+        "topStories": [
+          {"title": "香港最新消息", "publishedAt": "2026-08-24T07:55:00.000Z", "url": "https://news.rthk.hk/story/1"},
+          {"title": "第二條新聞", "publishedAt": "2026-08-24T07:50:00.000Z", "url": "https://news.rthk.hk/story/2"}
+        ],
+        "latestStories": [
+          {"title": "第三條新聞", "publishedAt": "2026-08-24T07:45:00.000Z", "url": "https://news.rthk.hk/story/3"}
+        ],
+        "error": null
+      },
+      "unitedKingdom": {
+        "status": "stale",
+        "updatedAt": "2026-08-24T07:00:00.000Z",
+        "stale": true,
+        "source": "BBC News",
+        "topStories": [
+          {"title": "UK headline", "publishedAt": "2026-08-24T06:55:00.000Z", "url": "https://www.bbc.co.uk/news/story/1"}
+        ],
+        "latestStories": [],
+        "error": null
+      }
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_TRUE(result.model.news.hongKong.status == PanelStatus::Live);
+  TEST_ASSERT_FALSE(result.model.news.hongKong.stale);
+  TEST_ASSERT_EQUAL_STRING("RTHK News", result.model.news.hongKong.source.c_str());
+  TEST_ASSERT_EQUAL(2, (int)result.model.news.hongKong.topStories.size());
+  TEST_ASSERT_EQUAL_STRING("香港最新消息", result.model.news.hongKong.topStories[0].title.c_str());
+  TEST_ASSERT_EQUAL_STRING("2026-08-24T07:55:00.000Z", result.model.news.hongKong.topStories[0].publishedAt.c_str());
+  TEST_ASSERT_EQUAL_STRING("https://news.rthk.hk/story/1", result.model.news.hongKong.topStories[0].url.c_str());
+  TEST_ASSERT_EQUAL(1, (int)result.model.news.hongKong.latestStories.size());
+
+  TEST_ASSERT_TRUE(result.model.news.unitedKingdom.status == PanelStatus::Stale);
+  TEST_ASSERT_TRUE(result.model.news.unitedKingdom.stale);
+  TEST_ASSERT_TRUE(result.model.news.unitedKingdom.hasUpdatedAt);
+  TEST_ASSERT_EQUAL_STRING("2026-08-24T07:00:00.000Z", result.model.news.unitedKingdom.updatedAt.c_str());
+}
+
+void test_skips_malformed_news_stories_and_defaults_missing_news_to_unavailable() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "temperatureC": 12.4, "condition": "Partly cloudy", "error": null},
+    "electricity": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "prices": [], "error": null},
+    "news": {
+      "hongKong": {
+        "status": "live",
+        "updatedAt": "2026-08-24T08:00:00.000Z",
+        "stale": false,
+        "source": "RTHK News",
+        "topStories": [
+          {"title": null, "publishedAt": "2026-08-24T07:55:00.000Z", "url": "https://news.rthk.hk/story/bad-title"},
+          {"title": "有效新聞", "publishedAt": "2026-08-24T07:50:00.000Z", "url": 123}
+        ],
+        "latestStories": [
+          {"title": "有效新聞", "publishedAt": null, "url": "https://news.rthk.hk/story/bad-time"},
+          {"title": "有效新聞", "publishedAt": "2026-08-24T07:40:00.000Z", "url": "https://news.rthk.hk/story/good"}
+        ],
+        "error": null
+      },
+      "unitedKingdom": {
+        "status": "unavailable",
+        "updatedAt": null,
+        "stale": false,
+        "source": "BBC News",
+        "topStories": [],
+        "latestStories": [],
+        "error": "UK news is temporarily unavailable."
+      }
+    }
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_EQUAL(1, (int)result.model.news.hongKong.latestStories.size());
+  TEST_ASSERT_EQUAL_STRING("https://news.rthk.hk/story/good", result.model.news.hongKong.latestStories[0].url.c_str());
+  TEST_ASSERT_TRUE(result.model.news.unitedKingdom.status == PanelStatus::Unavailable);
+  TEST_ASSERT_FALSE(result.model.news.unitedKingdom.stale);
+  TEST_ASSERT_EQUAL(0, (int)result.model.news.unitedKingdom.topStories.size());
+}
+
+void test_missing_news_object_keeps_dashboard_parse_compatible() {
+  const std::string json = R"({
+    "version": 1,
+    "generatedAt": "2026-08-24T08:00:00.000Z",
+    "status": "live",
+    "route": {"origin": {"name": "Watford Junction", "crs": "WFJ"}, "destination": {"name": "London Euston", "crs": "EUS"}},
+    "departures": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "services": [], "error": null},
+    "weather": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "temperatureC": 12.4, "condition": "Partly cloudy", "error": null},
+    "electricity": {"status": "live", "updatedAt": "2026-08-24T08:00:00.000Z", "stale": false, "prices": [], "error": null}
+  })";
+
+  ParseResult result = parseDashboard(json);
+
+  TEST_ASSERT_TRUE(result.ok);
+  TEST_ASSERT_TRUE(result.model.news.hongKong.status == PanelStatus::Unavailable);
+  TEST_ASSERT_TRUE(result.model.news.unitedKingdom.status == PanelStatus::Unavailable);
+  TEST_ASSERT_EQUAL_STRING("RTHK News", result.model.news.hongKong.source.c_str());
+  TEST_ASSERT_EQUAL_STRING("BBC News", result.model.news.unitedKingdom.source.c_str());
+}
+
 int main(int argc, char **argv) {
   UNITY_BEGIN();
   RUN_TEST(test_parses_live_departure_with_all_fields);
@@ -585,5 +708,8 @@ int main(int argc, char **argv) {
   RUN_TEST(test_parses_electricity_panel_skipping_malformed_slots);
   RUN_TEST(test_today_average_price_absent_when_null);
   RUN_TEST(test_rejects_dashboard_missing_electricity_panel);
+  RUN_TEST(test_parses_live_and_stale_news_panels_with_utf8_titles);
+  RUN_TEST(test_skips_malformed_news_stories_and_defaults_missing_news_to_unavailable);
+  RUN_TEST(test_missing_news_object_keeps_dashboard_parse_compatible);
   return UNITY_END();
 }

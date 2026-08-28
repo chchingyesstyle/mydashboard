@@ -232,6 +232,56 @@ void parseElectricityPanel(JsonObject electricityJson, ElectricityPanel& electri
   }
 }
 
+void setUnavailableNewsPanel(NewsPanel& panel, const char* source) {
+  panel.status = PanelStatus::Unavailable;
+  panel.stale = false;
+  panel.hasUpdatedAt = false;
+  panel.updatedAt.clear();
+  panel.source = source;
+  panel.topStories.clear();
+  panel.latestStories.clear();
+}
+
+void parseNewsStories(JsonVariant storiesJson, size_t maxStories,
+                      std::vector<NewsStory>& stories) {
+  if (!storiesJson.is<JsonArray>()) return;
+  for (JsonObject storyJson : storiesJson.as<JsonArray>()) {
+    if (stories.size() >= maxStories ||
+        !storyJson["title"].is<const char*>() ||
+        !storyJson["publishedAt"].is<const char*>() ||
+        !storyJson["url"].is<const char*>()) {
+      continue;
+    }
+    const char* title = storyJson["title"].as<const char*>();
+    const char* publishedAt = storyJson["publishedAt"].as<const char*>();
+    const char* url = storyJson["url"].as<const char*>();
+    if (title == nullptr || publishedAt == nullptr || url == nullptr ||
+        title[0] == '\0' || publishedAt[0] == '\0' || url[0] == '\0') {
+      continue;
+    }
+    stories.push_back(NewsStory{title, publishedAt, url});
+  }
+}
+
+void parseNewsPanel(JsonObject newsJson, NewsPanel& panel, const char* fallbackSource) {
+  panel.status = parsePanelStatus(newsJson["status"] | "");
+  panel.stale = newsJson["stale"] | false;
+  if (newsJson["updatedAt"].is<const char*>()) {
+    panel.hasUpdatedAt = true;
+    panel.updatedAt = newsJson["updatedAt"].as<const char*>();
+  } else {
+    panel.hasUpdatedAt = false;
+    panel.updatedAt.clear();
+  }
+  panel.source = newsJson["source"].is<const char*>()
+                     ? newsJson["source"].as<const char*>()
+                     : fallbackSource;
+  panel.topStories.clear();
+  panel.latestStories.clear();
+  parseNewsStories(newsJson["topStories"], 2, panel.topStories);
+  parseNewsStories(newsJson["latestStories"], 3, panel.latestStories);
+}
+
 }  // namespace
 
 ParseResult parseDashboard(const std::string& json) {
@@ -253,11 +303,25 @@ ParseResult parseDashboard(const std::string& json) {
     return result;
   }
 
-  DashboardModel model;
+  DashboardModel model{};
   model.status = parseDashboardStatus(doc["status"].as<const char*>());
+  setUnavailableNewsPanel(model.news.hongKong, "RTHK News");
+  setUnavailableNewsPanel(model.news.unitedKingdom, "BBC News");
   parseDeparturesPanel(doc["departures"].as<JsonObject>(), model.departures);
   parseWeatherPanel(doc["weather"].as<JsonObject>(), model.weather);
   parseElectricityPanel(doc["electricity"].as<JsonObject>(), model.electricity);
+
+  if (doc["news"].is<JsonObject>()) {
+    JsonObject newsJson = doc["news"].as<JsonObject>();
+    if (newsJson["hongKong"].is<JsonObject>()) {
+      parseNewsPanel(newsJson["hongKong"].as<JsonObject>(), model.news.hongKong,
+                     "RTHK News");
+    }
+    if (newsJson["unitedKingdom"].is<JsonObject>()) {
+      parseNewsPanel(newsJson["unitedKingdom"].as<JsonObject>(),
+                     model.news.unitedKingdom, "BBC News");
+    }
+  }
 
   result.ok = true;
   result.model = model;
