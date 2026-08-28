@@ -49,14 +49,34 @@ const payload: DashboardPayload = {
     prices: [],
     todayAveragePencePerKwh: null,
     error: "Electricity prices are temporarily unavailable."
+  },
+  news: {
+    hongKong: {
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      source: "RTHK News",
+      topStories: [],
+      latestStories: [],
+      error: "Hong Kong news is temporarily unavailable."
+    },
+    unitedKingdom: {
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      source: "BBC News",
+      topStories: [],
+      latestStories: [],
+      error: "UK news is temporarily unavailable."
+    }
   }
 };
 
-function worker() {
+function worker(payloadOverride: DashboardPayload = payload) {
   const getDashboard = vi.fn(async (
     route: RouteConfig = ROUTES["WFJ-EUS"]
   ): Promise<DashboardPayload> => ({
-    ...payload,
+    ...payloadOverride,
     route: {
       origin: route.origin,
       destination: route.destination
@@ -139,6 +159,31 @@ describe("worker routing", () => {
 
     expect(first.headers.get("etag")).toMatch(/^"[0-9a-f]{64}"$/);
     expect(second.headers.get("etag")).toBe(first.headers.get("etag"));
+  });
+
+  it("changes the ETag when only a news headline changes", async () => {
+    const first = await worker(payload).fetch(
+      new Request("https://dashboard.cchk.uk/api/v1/dashboard")
+    );
+    const changedPayload: DashboardPayload = {
+      ...payload,
+      news: {
+        ...payload.news,
+        unitedKingdom: {
+          ...payload.news.unitedKingdom,
+          topStories: [{
+            title: "A newer UK headline",
+            publishedAt: "2026-07-28T12:00:00.000Z",
+            url: "https://www.bbc.co.uk/news/articles/newer"
+          }]
+        }
+      }
+    };
+    const second = await worker(changedPayload).fetch(
+      new Request("https://dashboard.cchk.uk/api/v1/dashboard")
+    );
+
+    expect(second.headers.get("etag")).not.toBe(first.headers.get("etag"));
   });
 
   it("keeps conditional ETags independent by route", async () => {

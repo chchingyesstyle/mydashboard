@@ -89,6 +89,22 @@ export interface ElectricityPanel {
   error: string | null;
 }
 
+export interface NewsStory {
+  title: string;
+  publishedAt: string;
+  url: string;
+}
+
+export interface NewsPanel {
+  status: PanelStatus;
+  updatedAt: string | null;
+  stale: boolean;
+  source: string;
+  topStories: NewsStory[];
+  latestStories: NewsStory[];
+  error: string | null;
+}
+
 export interface DashboardPayload {
   version: 1;
   generatedAt: string;
@@ -100,6 +116,10 @@ export interface DashboardPayload {
   departures: DeparturesPanel;
   weather: WeatherPanel;
   electricity: ElectricityPanel;
+  news: {
+    hongKong: NewsPanel;
+    unitedKingdom: NewsPanel;
+  };
 }
 
 export const ROUTES = {

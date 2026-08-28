@@ -5,6 +5,7 @@ import {
   type Departure,
   type DeparturesPanel,
   type ElectricityPanel,
+  type NewsPanel,
   type RouteConfig,
   type WeatherPanel,
   type WeatherWarning
@@ -18,10 +19,18 @@ import {
 } from "./providers/rtt";
 import { fetchWeather, type WeatherValue } from "./providers/weather";
 import { fetchWeatherWarning } from "./providers/weather-warning";
+import {
+  fetchNewsFeed,
+  HONG_KONG_NEWS_SOURCE,
+  UNITED_KINGDOM_NEWS_SOURCE,
+  type NewsFeed
+} from "./providers/news";
 
 const RAIL_ERROR = "Live departures are temporarily unavailable.";
 const WEATHER_ERROR = "Current weather is temporarily unavailable.";
 const ELECTRICITY_ERROR = "Electricity prices are temporarily unavailable.";
+const HONG_KONG_NEWS_ERROR = "Hong Kong news is temporarily unavailable.";
+const UNITED_KINGDOM_NEWS_ERROR = "UK news is temporarily unavailable.";
 const londonDateTime = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   hour: "2-digit",
@@ -180,6 +189,34 @@ function electricityPanel(
   };
 }
 
+function newsPanel(
+  result: PromiseSettledResult<CachedResult<NewsFeed>>,
+  source: string,
+  error: string
+): NewsPanel {
+  if (result.status === "rejected") {
+    return {
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      source,
+      topStories: [],
+      latestStories: [],
+      error
+    };
+  }
+
+  return {
+    status: result.value.stale ? "stale" : "live",
+    updatedAt: result.value.updatedAt,
+    stale: result.value.stale,
+    source: result.value.value.source,
+    topStories: result.value.value.topStories,
+    latestStories: result.value.value.latestStories,
+    error: null
+  };
+}
+
 function dashboardStatus(
   departures: DeparturesPanel,
   weather: WeatherPanel
@@ -215,7 +252,15 @@ export function createDashboardService(deps: {
       }).then((result) => result.value)
         .catch(() => [] as RttServiceEnrichment[])
       : Promise.resolve([] as RttServiceEnrichment[]);
-    const [railResult, weatherResult, warningResult, electricityResult, enrichmentResult] =
+    const [
+      railResult,
+      weatherResult,
+      warningResult,
+      electricityResult,
+      enrichmentResult,
+      hongKongNewsResult,
+      unitedKingdomNewsResult
+    ] =
       await Promise.allSettled([
         loadWithFallback({
           cache: deps.cache,
@@ -254,7 +299,23 @@ export function createDashboardService(deps: {
           staleForMs: 3 * 60 * 60_000,
           load: () => fetchAgilePrices(deps.fetcher, now)
         }),
-        serviceEnrichments
+        serviceEnrichments,
+        loadWithFallback({
+          cache: deps.cache,
+          key: "news:hong-kong",
+          now,
+          freshForMs: 5 * 60_000,
+          staleForMs: 60 * 60_000,
+          load: () => fetchNewsFeed(deps.fetcher, HONG_KONG_NEWS_SOURCE)
+        }),
+        loadWithFallback({
+          cache: deps.cache,
+          key: "news:united-kingdom",
+          now,
+          freshForMs: 5 * 60_000,
+          staleForMs: 60 * 60_000,
+          load: () => fetchNewsFeed(deps.fetcher, UNITED_KINGDOM_NEWS_SOURCE)
+        })
       ]);
     const departures = enrichDepartures(
       departuresPanel(railResult),
@@ -262,7 +323,25 @@ export function createDashboardService(deps: {
     );
     const weather = weatherPanel(weatherResult, warningResult);
     const electricity = electricityPanel(electricityResult);
-    const generatedAt = [departures.updatedAt, weather.updatedAt, electricity.updatedAt]
+    const news = {
+      hongKong: newsPanel(
+        hongKongNewsResult,
+        HONG_KONG_NEWS_SOURCE.source,
+        HONG_KONG_NEWS_ERROR
+      ),
+      unitedKingdom: newsPanel(
+        unitedKingdomNewsResult,
+        UNITED_KINGDOM_NEWS_SOURCE.source,
+        UNITED_KINGDOM_NEWS_ERROR
+      )
+    };
+    const generatedAt = [
+      departures.updatedAt,
+      weather.updatedAt,
+      electricity.updatedAt,
+      news.hongKong.updatedAt,
+      news.unitedKingdom.updatedAt
+    ]
       .filter((updatedAt): updatedAt is string => updatedAt !== null)
       .sort()
       .at(-1) ?? now.toISOString();
@@ -277,7 +356,8 @@ export function createDashboardService(deps: {
       },
       departures,
       weather,
-      electricity
+      electricity,
+      news
     };
   };
 }

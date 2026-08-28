@@ -6,6 +6,8 @@ import { normalizeDarwin } from "../../src/worker/providers/rail";
 import { darwinFixture, reverseDarwinFixture } from "../fixtures/darwin";
 import { octopusAgileFixture } from "../fixtures/octopus-agile";
 import { openMeteoFixture } from "../fixtures/open-meteo";
+import { bbcNewsFixture } from "../fixtures/bbc-news";
+import { rthkNewsFixture } from "../fixtures/rthk-news";
 import {
   rttAccessTokenFixture,
   rttDashboardLocationFixture,
@@ -42,6 +44,8 @@ function networkFetcher(options: {
   weather?: Response;
   weatherWarning?: Response;
   electricity?: Response;
+  hongKongNews?: Response;
+  unitedKingdomNews?: Response;
   rttAccessToken?: Response;
   rttLocation?: Response;
 } = {}): typeof fetch {
@@ -78,6 +82,12 @@ function networkFetcher(options: {
     if (url.includes("api.octopus.energy")) {
       return options.electricity?.clone() ??
         new Response(JSON.stringify(octopusAgileFixture));
+    }
+    if (url === "https://rthk.hk/rthk/news/rss/c_expressnews_clocal.xml") {
+      return options.hongKongNews?.clone() ?? new Response(rthkNewsFixture);
+    }
+    if (url === "https://feeds.bbci.co.uk/news/rss.xml") {
+      return options.unitedKingdomNews?.clone() ?? new Response(bbcNewsFixture);
     }
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
@@ -131,6 +141,118 @@ describe("dashboard service", () => {
     });
     expect(dashboard.weather.dailyForecast).toHaveLength(7);
     expect(dashboard.weather.hourlyForecast).toHaveLength(12);
+    expect(dashboard.news).toMatchObject({
+      hongKong: {
+        status: "live",
+        updatedAt: NOW.toISOString(),
+        stale: false,
+        source: "RTHK News",
+        error: null
+      },
+      unitedKingdom: {
+        status: "live",
+        updatedAt: NOW.toISOString(),
+        stale: false,
+        source: "BBC News",
+        error: null
+      }
+    });
+    expect(dashboard.news.hongKong.topStories).toHaveLength(2);
+    expect(dashboard.news.hongKong.latestStories).toHaveLength(3);
+    expect(dashboard.news.unitedKingdom.topStories).toHaveLength(2);
+    expect(dashboard.news.unitedKingdom.latestStories).toHaveLength(3);
+  });
+
+  it("caches both RSS panels independently of route for five minutes", async () => {
+    const cache = new MemoryCacheStore();
+    let now = NOW;
+    let rssRequests = 0;
+    const baseFetcher = networkFetcher();
+    const fetcher = ((input: string | URL | Request, init?: RequestInit) => {
+      if (input.toString().includes("rthk.hk") || input.toString().includes("feeds.bbci.co.uk")) {
+        rssRequests += 1;
+      }
+      return baseFetcher(input, init);
+    }) as typeof fetch;
+    const getDashboard = createDashboardService({
+      fetcher,
+      cache,
+      now: () => now,
+      darwinApiKey: "consumer-key"
+    });
+
+    await getDashboard(ROUTES["WFJ-EUS"]);
+    now = new Date(NOW.getTime() + (4 * 60_000));
+    await getDashboard(ROUTES["EUS-WFJ"]);
+
+    expect(rssRequests).toBe(2);
+    expect(cache.keys()).toEqual(expect.arrayContaining([
+      "news:hong-kong",
+      "news:united-kingdom"
+    ]));
+
+    now = new Date(NOW.getTime() + (5 * 60_000));
+    await getDashboard(ROUTES["WFJ-ALL"]);
+    expect(rssRequests).toBe(4);
+  });
+
+  it("keeps dashboard status live when a news panel is unavailable", async () => {
+    const getDashboard = createDashboardService({
+      fetcher: networkFetcher({
+        hongKongNews: new Response("unavailable", { status: 503 })
+      }),
+      cache: new MemoryCacheStore(),
+      now: () => NOW,
+      darwinApiKey: "consumer-key"
+    });
+
+    const dashboard = await getDashboard();
+
+    expect(dashboard.status).toBe("live");
+    expect(dashboard.news.hongKong).toEqual({
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      source: "RTHK News",
+      topStories: [],
+      latestStories: [],
+      error: "Hong Kong news is temporarily unavailable."
+    });
+    expect(dashboard.news.unitedKingdom.status).toBe("live");
+  });
+
+  it("returns stale news for up to sixty minutes after a failed refresh", async () => {
+    const cache = new MemoryCacheStore();
+    let now = NOW;
+    let failHongKongNews = false;
+    const baseFetcher = networkFetcher();
+    const fetcher = ((input: string | URL | Request, init?: RequestInit) => {
+      if (failHongKongNews && input.toString().includes("rthk.hk")) {
+        return Promise.resolve(new Response("unavailable", { status: 503 }));
+      }
+      return baseFetcher(input, init);
+    }) as typeof fetch;
+    const getDashboard = createDashboardService({
+      fetcher,
+      cache,
+      now: () => now,
+      darwinApiKey: "consumer-key"
+    });
+
+    await getDashboard();
+    failHongKongNews = true;
+    now = new Date(NOW.getTime() + (6 * 60_000));
+    const stale = await getDashboard();
+    now = new Date(NOW.getTime() + (61 * 60_000));
+    const unavailable = await getDashboard();
+
+    expect(stale.news.hongKong).toMatchObject({
+      status: "stale",
+      updatedAt: NOW.toISOString(),
+      stale: true
+    });
+    expect(unavailable.news.hongKong.status).toBe("unavailable");
+    expect(unavailable.status).toBe("live");
   });
 
   it("includes a live electricity panel with current and future Agile prices", async () => {
@@ -610,11 +732,13 @@ describe("dashboard service", () => {
     const dashboard = getDashboard();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(requestedUrls).toHaveLength(4);
+    expect(requestedUrls).toHaveLength(6);
     resolvers[0](new Response(JSON.stringify(darwinFixture)));
     resolvers[1](new Response(JSON.stringify(openMeteoFixture)));
     resolvers[2](new Response(JSON.stringify({ warnings: [] })));
     resolvers[3](new Response(JSON.stringify(octopusAgileFixture)));
+    resolvers[4](new Response(rthkNewsFixture));
+    resolvers[5](new Response(bbcNewsFixture));
     await expect(dashboard).resolves.toMatchObject({ status: "live" });
   });
 

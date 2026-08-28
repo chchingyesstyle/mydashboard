@@ -105,6 +105,26 @@ const liveDashboard: DashboardPayload = {
     prices: [],
     todayAveragePencePerKwh: null,
     error: null
+  },
+  news: {
+    hongKong: {
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      source: "RTHK News",
+      topStories: [],
+      latestStories: [],
+      error: "Hong Kong news is temporarily unavailable."
+    },
+    unitedKingdom: {
+      status: "unavailable",
+      updatedAt: null,
+      stale: false,
+      source: "BBC News",
+      topStories: [],
+      latestStories: [],
+      error: "UK news is temporarily unavailable."
+    }
   }
 };
 
