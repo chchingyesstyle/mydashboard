@@ -24,5 +24,8 @@
     "vite": "latest",
     "vitest": "latest",
     "wrangler": "latest"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.11.1"
   }
 }
