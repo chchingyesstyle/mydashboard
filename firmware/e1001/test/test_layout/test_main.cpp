@@ -532,6 +532,10 @@ void test_daily_forecast_layout_uses_compact_aligned_weather_columns() {
   TEST_ASSERT_EQUAL_STRING("14C / 25C", tuesday.tempRangeText.c_str());
 }
 
+void test_hourly_forecast_headings_start_below_global_header() {
+  TEST_ASSERT_EQUAL(54, hourlyForecastHeaderBaseline(36));
+}
+
 void test_hourly_forecast_layout_keeps_rain_chance_for_every_hour() {
   DashboardModel model;
   model.weather.hourlyForecast.push_back(
@@ -684,6 +688,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_battery_percent_from_voltage_clamps_out_of_range);
   RUN_TEST(test_weekday_index_for_known_anchor_dates);
   RUN_TEST(test_daily_forecast_layout_uses_compact_aligned_weather_columns);
+  RUN_TEST(test_hourly_forecast_headings_start_below_global_header);
   RUN_TEST(test_hourly_forecast_layout_keeps_rain_chance_for_every_hour);
   RUN_TEST(test_forecast_layout_passes_through_status_battery_and_refresh_text);
   RUN_TEST(test_hong_kong_news_layout_selects_traditional_chinese_panel);

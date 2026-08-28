@@ -102,6 +102,9 @@ int batteryPercentFromVoltage(double voltage);
 
 WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode);
 
+// Keep hourly forecast column headings below the global title row.
+int hourlyForecastHeaderBaseline(int headerHeight);
+
 // Day of week (0=Sunday..6=Saturday) for a Gregorian calendar date, via
 // Sakamoto's algorithm.
 int weekdayIndexFor(int year, int month, int day);

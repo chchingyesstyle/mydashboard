@@ -383,11 +383,12 @@ void drawHourlyForecastRows(const LayoutResult& layout) {
   constexpr int kTemperatureOffset = 190;
 
   display.setFont(&FreeSans9pt7b);
+  const int headerBaseline = hourlyForecastHeaderBaseline(kHeaderHeight);
   for (int column = 0; column < 2; column++) {
     int columnX = column * columnWidth;
-    display.setCursor(columnX + kRainOffset, 25);
+    display.setCursor(columnX + kRainOffset, headerBaseline);
     display.print("Rain");
-    display.setCursor(columnX + kTemperatureOffset, 25);
+    display.setCursor(columnX + kTemperatureOffset, headerBaseline);
     display.print("Temp");
   }
 

@@ -254,6 +254,10 @@ WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode) {
   return WeatherIconKind::Cloud;
 }
 
+int hourlyForecastHeaderBaseline(int headerHeight) {
+  return headerHeight + 18;
+}
+
 int batteryPercentFromVoltage(double voltage) {
   struct Point { double voltage; int percent; };
   static const Point kCurve[] = {
