@@ -28,7 +28,16 @@ Screen timeBasedDefaultScreen(int hourOfDay) {
 }
 
 RouteMode routeModeForScreen(Screen screen) {
-  return screen == Screen::Commute ? RouteMode::Commute : RouteMode::AllDepartures;
+  switch (screen) {
+    case Screen::Commute: return RouteMode::Commute;
+    case Screen::AllDepartures:
+    case Screen::SevenDayWeather:
+    case Screen::TwelveHourWeather:
+    case Screen::HongKongNews:
+    case Screen::UkNews:
+      return RouteMode::AllDepartures;
+  }
+  return RouteMode::AllDepartures;
 }
 
 std::string routeIdForScreen(Screen screen) {
@@ -41,6 +50,8 @@ std::string screenTitle(Screen screen) {
     case Screen::AllDepartures: return routeTitleForMode(RouteMode::AllDepartures);
     case Screen::SevenDayWeather: return "7-Day Forecast";
     case Screen::TwelveHourWeather: return "Next 12 Hours";
+    case Screen::HongKongNews: return "Hong Kong News";
+    case Screen::UkNews: return "UK News";
   }
   return routeTitleForMode(RouteMode::Commute);
 }

@@ -1,8 +1,10 @@
 #include "layout.h"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 
 namespace {
 
@@ -114,6 +116,123 @@ std::string weatherWarningTextFor(const WeatherPanel& weather) {
   return text;
 }
 
+bool isLeapYear(int year) {
+  return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+}
+
+int daysInMonth(int year, int month) {
+  static const int days[] = {31, 28, 31, 30, 31, 30,
+                             31, 31, 30, 31, 30, 31};
+  if (month == 2 && isLeapYear(year)) return 29;
+  return days[month - 1];
+}
+
+bool parseIsoEpoch(const std::string& timestamp, time_t& epoch) {
+  if (timestamp.size() < 19 || timestamp[4] != '-' || timestamp[7] != '-' ||
+      timestamp[10] != 'T' || timestamp[13] != ':' || timestamp[16] != ':') {
+    return false;
+  }
+  int year = std::atoi(timestamp.substr(0, 4).c_str());
+  int month = std::atoi(timestamp.substr(5, 2).c_str());
+  int day = std::atoi(timestamp.substr(8, 2).c_str());
+  int hour = std::atoi(timestamp.substr(11, 2).c_str());
+  int minute = std::atoi(timestamp.substr(14, 2).c_str());
+  int second = std::atoi(timestamp.substr(17, 2).c_str());
+  if (year < 1970 || month < 1 || month > 12 || day < 1 ||
+      day > daysInMonth(year, month) || hour > 23 || minute > 59 ||
+      second > 59) {
+    return false;
+  }
+
+  int offsetMinutes = 0;
+  if (timestamp.size() > 19 && timestamp[19] != 'Z') {
+    if ((timestamp[19] != '+' && timestamp[19] != '-') || timestamp.size() < 25 ||
+        timestamp[22] != ':') {
+      return false;
+    }
+    int offsetHours = std::atoi(timestamp.substr(20, 2).c_str());
+    int offsetPartMinutes = std::atoi(timestamp.substr(23, 2).c_str());
+    if (offsetHours > 23 || offsetPartMinutes > 59) return false;
+    offsetMinutes = offsetHours * 60 + offsetPartMinutes;
+    if (timestamp[19] == '-') offsetMinutes = -offsetMinutes;
+  }
+
+  int64_t days = 0;
+  for (int currentYear = 1970; currentYear < year; currentYear++) {
+    days += isLeapYear(currentYear) ? 366 : 365;
+  }
+  for (int currentMonth = 1; currentMonth < month; currentMonth++) {
+    days += daysInMonth(year, currentMonth);
+  }
+  days += day - 1;
+  epoch = static_cast<time_t>(days * 86400 + hour * 3600 + minute * 60 +
+                              second - offsetMinutes * 60);
+  return true;
+}
+
+bool gmtTime(time_t epoch, struct tm& output) {
+#if defined(_WIN32)
+  return gmtime_s(&output, &epoch) == 0;
+#else
+  return gmtime_r(&epoch, &output) != nullptr;
+#endif
+}
+
+bool isBritishSummerTime(time_t utcEpoch) {
+  struct tm utc{};
+  if (!gmtTime(utcEpoch, utc)) return false;
+  if (utc.tm_mon < 2 || utc.tm_mon > 9) return false;
+  if (utc.tm_mon > 2 && utc.tm_mon < 9) return true;
+  int lastSunday = 31 - weekdayIndexFor(utc.tm_year + 1900, utc.tm_mon + 1, 31);
+  if (utc.tm_mon == 2) {
+    return utc.tm_mday > lastSunday ||
+           (utc.tm_mday == lastSunday && utc.tm_hour >= 1);
+  }
+  return utc.tm_mday < lastSunday ||
+         (utc.tm_mday == lastSunday && utc.tm_hour < 1);
+}
+
+std::string formatNewsTime(const std::string& timestamp) {
+  time_t epoch;
+  if (!parseIsoEpoch(timestamp, epoch)) return "";
+  if (isBritishSummerTime(epoch)) epoch += 3600;
+  struct tm london{};
+  if (!gmtTime(epoch, london)) return "";
+  char buffer[6];
+  snprintf(buffer, sizeof(buffer), "%02d:%02d", london.tm_hour, london.tm_min);
+  return std::string(buffer);
+}
+
+void appendNewsRows(const NewsPanel& panel, bool hongKong, LayoutResult& layout) {
+  layout.newsSourceText = panel.source;
+  layout.newsTopHeading = hongKong ? "熱門" : "Top Stories";
+  layout.newsLatestHeading = hongKong ? "最新消息" : "Latest";
+  layout.newsStale = panel.status == PanelStatus::Stale || panel.stale;
+  layout.newsUnavailable = panel.status == PanelStatus::Unavailable;
+  layout.newsUnavailableText = hongKong
+      ? "Hong Kong news unavailable"
+      : "UK news unavailable";
+
+  if (panel.hasUpdatedAt) {
+    const std::string localTime = formatNewsTime(panel.updatedAt);
+    layout.newsUpdateText = layout.newsStale ? "Stale" : "Updated";
+    if (!localTime.empty()) layout.newsUpdateText += " " + localTime;
+  } else {
+    layout.newsUpdateText = layout.newsUnavailable ? "Unavailable" : "";
+  }
+
+  const size_t topCount = panel.topStories.size() < 2 ? panel.topStories.size() : 2;
+  for (size_t i = 0; i < topCount; i++) {
+    const NewsStory& story = panel.topStories[i];
+    layout.newsTopRows.push_back(NewsStoryRow{story.title, formatNewsTime(story.publishedAt)});
+  }
+  const size_t latestCount = panel.latestStories.size() < 3 ? panel.latestStories.size() : 3;
+  for (size_t i = 0; i < latestCount; i++) {
+    const NewsStory& story = panel.latestStories[i];
+    layout.newsLatestRows.push_back(NewsStoryRow{story.title, formatNewsTime(story.publishedAt)});
+  }
+}
+
 }  // namespace
 
 WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode) {
@@ -158,7 +277,7 @@ int batteryPercentFromVoltage(double voltage) {
 
 LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent,
                            const std::string& lastRefreshText, Screen screen) {
-  LayoutResult layout;
+  LayoutResult layout{};
   layout.screen = screen;
   layout.routeTitle = screenTitle(screen);
   layout.batteryPercent = batteryPercent;
@@ -224,7 +343,7 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
                            formatRoundedWhole(day.temperatureMaxC) + "C";
       layout.dailyRows.push_back(row);
     }
-  } else {
+  } else if (screen == Screen::TwelveHourWeather) {
     for (const auto& hour : model.weather.hourlyForecast) {
       HourlyForecastRow row;
       row.timeText = extractTimeOfDay(hour.time);
@@ -234,6 +353,10 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
       row.tempText = formatRoundedWhole(hour.temperatureC) + "C";
       layout.hourlyRows.push_back(row);
     }
+  } else if (screen == Screen::HongKongNews) {
+    appendNewsRows(model.news.hongKong, true, layout);
+  } else if (screen == Screen::UkNews) {
+    appendNewsRows(model.news.unitedKingdom, false, layout);
   }
 
   int electricityCount = static_cast<int>(model.electricity.prices.size());

@@ -4,10 +4,17 @@
 
 enum class RouteMode { Commute, AllDepartures };
 
-// Which screen is currently being displayed. Commute and AllDepartures
-// render the departures+weather+electricity split (as before); the two
-// weather screens render a full-width forecast instead.
-enum class Screen { Commute, AllDepartures, SevenDayWeather, TwelveHourWeather };
+// Which screen is currently being displayed. Commute, AllDepartures and the
+// two news screens render the left content column beside weather/electricity;
+// the two weather screens render forecast rows in that same column.
+enum class Screen {
+  Commute,
+  AllDepartures,
+  SevenDayWeather,
+  TwelveHourWeather,
+  HongKongNews,
+  UkNews
+};
 
 // Commute mode (Watford Junction -> Euston) applies 6am-9am local time;
 // every other hour shows all Watford Junction departures.
@@ -21,29 +28,28 @@ std::string routeTitleForMode(RouteMode mode);
 Screen timeBasedDefaultScreen(int hourOfDay);
 
 // Which API route a screen's data comes from. Commute fetches WFJ-EUS;
-// every other screen (AllDepartures and both weather screens) fetches
-// WFJ-ALL, since Watford Junction's weather panel is the same regardless
-// of which route was requested.
+// every other screen fetches WFJ-ALL, since Watford Junction's weather panel
+// is the same regardless of which route was requested.
 RouteMode routeModeForScreen(Screen screen);
 std::string routeIdForScreen(Screen screen);
 std::string screenTitle(Screen screen);
 
-// All four screens, in a fixed cycle order used by the override button.
+// All six screens, in a fixed cycle order used by the override button.
 constexpr Screen kScreenCycle[] = {
     Screen::Commute, Screen::SevenDayWeather, Screen::TwelveHourWeather,
-    Screen::AllDepartures};
-constexpr int kScreenCycleLength = 4;
+    Screen::HongKongNews, Screen::UkNews, Screen::AllDepartures};
+constexpr int kScreenCycleLength = 6;
 
 // The position of a screen within kScreenCycle.
 int screenCycleIndexFor(Screen screen);
 Screen screenForCycleIndex(int index);
 
 // The screen-cycle index to use for this wake. Pressing the override
-// button advances one step around the fixed 4-item cycle from wherever it
+// button advances one step around the fixed 6-item cycle from wherever it
 // last was; any other wake (timer or the plain refresh button) resets to
-// the time-based default's position in the cycle. Four consecutive
-// override presses (with no intervening non-override wake) always land
-// back on the screen you started from, since it's a plain round-robin.
+// the time-based default's position in the cycle. Six consecutive override
+// presses (with no intervening non-override wake) always land back on the
+// screen you started from, since it's a plain round-robin.
 int nextScreenCycleIndex(int currentIndex, bool overrideButtonPressed,
                           Screen timeBasedDefault);
 

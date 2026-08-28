@@ -32,6 +32,25 @@ ParsedDeparture makeDeparture(const std::string& scheduledDeparture,
   return departure;
 }
 
+NewsPanel makeNewsPanel(const std::string& source, PanelStatus status, bool stale) {
+  NewsPanel panel{};
+  panel.status = status;
+  panel.stale = stale;
+  panel.hasUpdatedAt = true;
+  panel.updatedAt = "2026-08-24T08:00:00+01:00";
+  panel.source = source;
+  panel.topStories = {
+    NewsStory{"第一條新聞", "2026-08-24T08:45:00+01:00", "https://example.test/1"},
+    NewsStory{"Second headline", "2026-08-24T08:30:00+01:00", "https://example.test/2"}
+  };
+  panel.latestStories = {
+    NewsStory{"Third headline", "2026-08-24T08:15:00+01:00", "https://example.test/3"},
+    NewsStory{"Fourth headline", "2026-08-24T08:00:00+01:00", "https://example.test/4"},
+    NewsStory{"Fifth headline", "2026-08-24T07:45:00+01:00", "https://example.test/5"}
+  };
+  return panel;
+}
+
 }  // namespace
 
 void test_extracts_time_of_day_and_platform_text() {
@@ -546,6 +565,84 @@ void test_forecast_layout_passes_through_status_battery_and_refresh_text() {
   TEST_ASSERT_EQUAL_STRING("Mon 24 Aug  09:00", layout.lastRefreshText.c_str());
 }
 
+void test_hong_kong_news_layout_selects_traditional_chinese_panel() {
+  DashboardModel model{};
+  model.status = DashboardStatus::Live;
+  model.weather.hasTemperatureC = true;
+  model.weather.temperatureC = 21.4;
+  model.weather.hasCondition = true;
+  model.weather.condition = "Partly cloudy";
+  model.electricity.prices.push_back(
+      ElectricityPriceSlot{"2026-08-24T08:00:00+01:00", "2026-08-24T08:30:00+01:00", 20.5});
+  model.news.hongKong = makeNewsPanel("RTHK News", PanelStatus::Live, false);
+  model.news.unitedKingdom = makeNewsPanel("BBC News", PanelStatus::Live, false);
+
+  LayoutResult layout = computeLayout(
+      model, kMaxRows, -1, "", Screen::HongKongNews);
+
+  TEST_ASSERT_EQUAL_STRING("Hong Kong News", layout.routeTitle.c_str());
+  TEST_ASSERT_EQUAL_STRING("RTHK News", layout.newsSourceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("Updated 08:00", layout.newsUpdateText.c_str());
+  TEST_ASSERT_EQUAL_STRING("熱門", layout.newsTopHeading.c_str());
+  TEST_ASSERT_EQUAL_STRING("最新消息", layout.newsLatestHeading.c_str());
+  TEST_ASSERT_FALSE(layout.newsUnavailable);
+  TEST_ASSERT_FALSE(layout.newsStale);
+  TEST_ASSERT_EQUAL(2, (int)layout.newsTopRows.size());
+  TEST_ASSERT_EQUAL(3, (int)layout.newsLatestRows.size());
+  TEST_ASSERT_EQUAL_STRING("第一條新聞", layout.newsTopRows[0].title.c_str());
+  TEST_ASSERT_EQUAL_STRING("08:45", layout.newsTopRows[0].publishedTime.c_str());
+  TEST_ASSERT_EQUAL_STRING("Fifth headline", layout.newsLatestRows[2].title.c_str());
+  TEST_ASSERT_TRUE(layout.hasWeatherText);
+  TEST_ASSERT_EQUAL_STRING("21.4C", layout.weatherText.c_str());
+  TEST_ASSERT_EQUAL(1, (int)layout.electricityRows.size());
+}
+
+void test_uk_news_layout_uses_english_headings_and_panel() {
+  DashboardModel model{};
+  model.news.hongKong = makeNewsPanel("RTHK News", PanelStatus::Live, false);
+  model.news.unitedKingdom = makeNewsPanel("BBC News", PanelStatus::Live, false);
+
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::UkNews);
+
+  TEST_ASSERT_EQUAL_STRING("UK News", layout.routeTitle.c_str());
+  TEST_ASSERT_EQUAL_STRING("BBC News", layout.newsSourceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("Top Stories", layout.newsTopHeading.c_str());
+  TEST_ASSERT_EQUAL_STRING("Latest", layout.newsLatestHeading.c_str());
+  TEST_ASSERT_EQUAL_STRING("第一條新聞", layout.newsTopRows[0].title.c_str());
+}
+
+void test_news_layout_marks_stale_and_hides_unavailable_stories() {
+  DashboardModel staleModel{};
+  staleModel.news.hongKong = makeNewsPanel("RTHK News", PanelStatus::Stale, true);
+
+  LayoutResult stale = computeLayout(
+      staleModel, kMaxRows, -1, "", Screen::HongKongNews);
+
+  TEST_ASSERT_TRUE(stale.newsStale);
+  TEST_ASSERT_TRUE(stale.newsUpdateText.find("Stale") != std::string::npos);
+  TEST_ASSERT_EQUAL(2, (int)stale.newsTopRows.size());
+
+  DashboardModel unavailableModel{};
+  unavailableModel.weather.hasTemperatureC = true;
+  unavailableModel.weather.temperatureC = 18.0;
+  unavailableModel.weather.hasCondition = true;
+  unavailableModel.weather.condition = "Clear sky";
+  unavailableModel.news.hongKong = makeNewsPanel(
+      "RTHK News", PanelStatus::Unavailable, false);
+  unavailableModel.news.hongKong.hasUpdatedAt = false;
+  unavailableModel.news.hongKong.topStories.clear();
+  unavailableModel.news.hongKong.latestStories.clear();
+
+  LayoutResult unavailable = computeLayout(
+      unavailableModel, kMaxRows, -1, "", Screen::HongKongNews);
+
+  TEST_ASSERT_TRUE(unavailable.newsUnavailable);
+  TEST_ASSERT_EQUAL(0, (int)unavailable.newsTopRows.size());
+  TEST_ASSERT_EQUAL(0, (int)unavailable.newsLatestRows.size());
+  TEST_ASSERT_TRUE(unavailable.hasWeatherText);
+  TEST_ASSERT_EQUAL_STRING("18.0C", unavailable.weatherText.c_str());
+}
+
 void test_battery_percent_from_voltage_clamps_out_of_range() {
   TEST_ASSERT_EQUAL(0, batteryPercentFromVoltage(2.5));
   TEST_ASSERT_EQUAL(100, batteryPercentFromVoltage(4.5));
@@ -583,5 +680,8 @@ int main(int argc, char **argv) {
   RUN_TEST(test_daily_forecast_layout_uses_compact_aligned_weather_columns);
   RUN_TEST(test_hourly_forecast_layout_keeps_rain_chance_for_every_hour);
   RUN_TEST(test_forecast_layout_passes_through_status_battery_and_refresh_text);
+  RUN_TEST(test_hong_kong_news_layout_selects_traditional_chinese_panel);
+  RUN_TEST(test_uk_news_layout_uses_english_headings_and_panel);
+  RUN_TEST(test_news_layout_marks_stale_and_hides_unavailable_stories);
   return UNITY_END();
 }

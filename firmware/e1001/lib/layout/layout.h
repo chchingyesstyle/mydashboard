@@ -56,6 +56,11 @@ struct HourlyForecastRow {
   std::string tempText;
 };
 
+struct NewsStoryRow {
+  std::string title;
+  std::string publishedTime;
+};
+
 struct LayoutResult {
   Screen screen;
   std::string routeTitle;
@@ -68,6 +73,15 @@ struct LayoutResult {
   std::vector<std::string> weatherDetailLines;
   bool hasWeatherWarning;
   std::string weatherWarningText;
+  std::string newsSourceText;
+  std::string newsUpdateText;
+  std::string newsUnavailableText;
+  std::string newsTopHeading;
+  std::string newsLatestHeading;
+  bool newsStale;
+  bool newsUnavailable;
+  std::vector<NewsStoryRow> newsTopRows;
+  std::vector<NewsStoryRow> newsLatestRows;
   std::vector<DepartureRow> rows;
   std::vector<DailyForecastRow> dailyRows;
   std::vector<HourlyForecastRow> hourlyRows;
