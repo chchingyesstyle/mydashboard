@@ -63,6 +63,29 @@ describe("RSS news provider", () => {
     expect(headers.get("user-agent")).toBe("watford-euston-dashboard/1.0");
   });
 
+  it("upgrades an HTTP feed redirect before following it", async () => {
+    const requestedUrls: string[] = [];
+    const fetcher = (async (url: string | URL | Request) => {
+      requestedUrls.push(url.toString());
+      if (requestedUrls.length === 1) {
+        return new Response(null, {
+          status: 301,
+          headers: {
+            Location: "http://rthk9.rthk.hk/rthk/news/rss/c_expressnews_clocal.xml"
+          }
+        });
+      }
+      return new Response(rthkNewsFixture);
+    }) as typeof fetch;
+
+    await fetchNewsFeed(fetcher, HONG_KONG_NEWS_SOURCE);
+
+    expect(requestedUrls).toEqual([
+      HONG_KONG_NEWS_SOURCE.url,
+      "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_clocal.xml"
+    ]);
+  });
+
   it("keeps available valid stories when a feed has fewer than five", async () => {
     const feed = await fetchNewsFeed(
       (async () => new Response(rthkNewsFixture.replace(

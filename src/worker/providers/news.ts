@@ -31,6 +31,10 @@ const parser = new XMLParser({
   processEntities: true,
   trimValues: true
 });
+const newsRequestHeaders = {
+  Accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1",
+  "User-Agent": "watford-euston-dashboard/1.0"
+};
 
 function malformedResponse(): never {
   throw new Error("RSS news response was malformed");
@@ -90,17 +94,38 @@ function storyFrom(entry: unknown): NewsStory | null {
   };
 }
 
+async function fetchNewsResponse(
+  fetcher: typeof fetch,
+  sourceUrl: string
+): Promise<Response> {
+  const signal = AbortSignal.timeout(7000);
+  let url = sourceUrl;
+  let response: Response | undefined;
+
+  for (let redirectCount = 0; redirectCount <= 3; redirectCount++) {
+    response = await fetcher(url, {
+      headers: newsRequestHeaders,
+      redirect: "manual",
+      signal
+    });
+    if (response.status < 300 || response.status >= 400) return response;
+
+    const location = response.headers.get("Location");
+    if (location === null) return response;
+    const redirectedUrl = new URL(location, url);
+    if (redirectedUrl.protocol === "http:") redirectedUrl.protocol = "https:";
+    if (redirectedUrl.protocol !== "https:") return response;
+    url = redirectedUrl.toString();
+  }
+
+  return response!;
+}
+
 export async function fetchNewsFeed(
   fetcher: typeof fetch,
   source: NewsSource
 ): Promise<NewsFeed> {
-  const response = await fetcher(source.url, {
-    headers: {
-      Accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1",
-      "User-Agent": "watford-euston-dashboard/1.0"
-    },
-    signal: AbortSignal.timeout(7000)
-  });
+  const response = await fetchNewsResponse(fetcher, source.url);
   if (!response.ok) throw new Error("RSS news request failed");
 
   let parsed: unknown;
