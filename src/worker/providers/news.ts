@@ -41,13 +41,16 @@ function stringValue(value: unknown): string | null {
 }
 
 function decodeHeadline(value: string): string {
-  return value.replace(/&(amp|apos|gt|lt|quot);/g, (_entity, name: string) => ({
+  return value.replace(/&(amp|apos|gt|lt|quot);/g, (entity, name: string) => {
+    const decoded = ({
     amp: "&",
     apos: "'",
     gt: ">",
     lt: "<",
     quot: "\""
-  })[name]);
+    })[name];
+    return decoded ?? entity;
+  });
 }
 
 function entriesFrom(response: unknown): unknown[] {

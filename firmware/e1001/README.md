@@ -9,6 +9,7 @@ rationale:
 
 - `../../docs/superpowers/specs/2026-08-24-e1001-firmware-dashboard-design.md`
 - `../../docs/superpowers/specs/2026-08-24-e1001-two-column-agile-design.md`
+- `../../docs/superpowers/specs/2026-08-28-e1001-news-dashboard-design.md`
 
 This directory is a self-contained PlatformIO/C++ project. It is not part of
 the web app's `npm test`/`npm run build`/`npm run deploy` pipeline.
@@ -19,6 +20,8 @@ the web app's `npm test`/`npm run build`/`npm run deploy` pipeline.
   unit-tested.
 - `lib/layout/` — internal model to draw instructions (rows, weather lines,
   electricity slots, battery percentage). Pure logic, unit-tested.
+- `lib/news_font/` — vendored U8g2 Unifont Traditional-Chinese glyph table
+  and its upstream attribution.
 - `src/dashboard_client.cpp` — WiFi connection and HTTPS fetch with ETag.
   Device-only.
 - `src/render.cpp` — draws the layout to the ePaper display via
@@ -86,14 +89,17 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   Seeed's 3-month battery-life rating assumes, so expect meaningfully
   shorter battery life in practice. Selection logic is
   `sleepMinutesForHour()` in `lib/route_selector`.
-- **Four screens:** Commute (Watford -> Euston, WFJ-EUS), AllDepartures
-  (all Watford Junction departures, WFJ-ALL), SevenDayWeather, and
-  TwelveHourWeather (both WFJ-ALL, since Watford's weather panel doesn't
-  depend on the destination filter). The two weather screens replace the
-  departures column with forecast rows; the right-hand
-  weather/electricity column is identical on every screen. The forecast
-  layouts use fixed columns: every daily and hourly entry includes its rain
-  chance, and seven-day temperatures use a compact `lowC / highC` form.
+- **Six screens:** Commute (Watford -> Euston, WFJ-EUS), SevenDayWeather,
+  TwelveHourWeather, HongKongNews, UkNews, and AllDepartures (all Watford
+  Junction departures, WFJ-ALL). The forecast and news screens use WFJ-ALL,
+  since the Watford weather/news panels do not depend on the destination
+  filter. Every screen keeps the same right-hand weather/electricity column.
+  Forecast layouts use fixed columns: every daily and hourly entry includes
+  its rain chance, and seven-day temperatures use a compact `lowC / highC`
+  form. News screens show the feed source/update state, two wrapped top
+  stories, and three latest headlines with Europe/London publication times;
+  Hong Kong uses Traditional Chinese labels and glyphs while the UK screen
+  uses English labels.
   Time-based default: Commute from 6am-9am local time, otherwise
   SevenDayWeather.
   Outside Commute, each departure row also shows its destination and
@@ -102,10 +108,11 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
 - **Manual refresh:** press the **right white button** (GPIO4) to wake and
   refresh immediately, bypassing the timer, without changing the screen.
 - **Screen override:** press the **left white button** (GPIO5) to wake and
-  advance one step around the fixed 4-screen cycle (`kScreenCycle` in
+  advance one step around the fixed 6-screen cycle (`kScreenCycle` in
   `lib/route_selector`: Commute -> SevenDayWeather -> TwelveHourWeather ->
-  AllDepartures -> back to Commute) from wherever it last was, so 4
-  consecutive presses always land back on the screen you started from.
+  HongKongNews -> UkNews -> AllDepartures -> back to Commute) from wherever it
+  last was, so 6 consecutive presses always land back on the screen you
+  started from.
   Any other wake — the timer or the plain refresh button — realigns the
   cycle position to the current time-based default. The cycle index
   persists across deep sleep in `RTC_DATA_ATTR int screenCycleIndex`.
@@ -134,6 +141,12 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   a high-contrast `Expected HH:MM` badge beside its scheduled time. This is
   intentionally more prominent than the normal `On time` text; cancelled
   trains keep their full inverted row treatment.
+- **News feeds:** the Worker supplies RTHK local news for the Hong Kong screen
+  and BBC News headlines for the UK screen. Each panel is cached independently
+  by the API (fresh for 5 minutes, eligible for stale display for 60 minutes);
+  a feed failure affects only that news panel. The E1001 never fetches RSS
+  directly and renders an explicit unavailable message when no usable panel is
+  returned.
 - **Debug logging:** goes to `Serial0` (UART0, wired to the onboard CH340),
   not `Serial` — the XIAO ESP32-S3's board default routes `Serial` to
   native USB CDC, which this board doesn't expose.

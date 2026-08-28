@@ -22,7 +22,7 @@ constexpr uint64_t kFallbackSleepMicroseconds = 5ULL * 60 * 1000000;
 constexpr gpio_num_t kRefreshButtonPin = GPIO_NUM_4;
 // Left white button. GPIO5 is not a boot-strapping pin, so it's safe to use
 // as a second wake source. Each press advances one step around the fixed
-// 4-screen cycle (kScreenCycle), so 4 consecutive presses always return to
+// 6-screen cycle (kScreenCycle), so 6 consecutive presses always return to
 // the screen you started from; any other wake (timer or the plain refresh
 // button) realigns the cycle position to the current time-based default.
 constexpr gpio_num_t kOverrideButtonPin = GPIO_NUM_5;
@@ -37,6 +37,8 @@ const char* screenName(Screen screen) {
     case Screen::AllDepartures: return "AllDepartures";
     case Screen::SevenDayWeather: return "SevenDayWeather";
     case Screen::TwelveHourWeather: return "TwelveHourWeather";
+    case Screen::HongKongNews: return "HongKongNews";
+    case Screen::UkNews: return "UkNews";
   }
   return "Unknown";
 }
