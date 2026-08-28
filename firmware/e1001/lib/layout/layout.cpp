@@ -52,10 +52,6 @@ std::string formatPrice(double pricePencePerKwh) {
 
 constexpr const char* kWeekdayNames[7] = {
     "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-constexpr const char* kMonthNames[12] = {
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
 bool parseIsoDate(const std::string& date, int& year, int& month, int& day) {
   if (date.size() < 10) return false;
   year = std::atoi(date.substr(0, 4).c_str());
@@ -69,8 +65,7 @@ std::string formatDailyDateText(const std::string& date) {
   if (!parseIsoDate(date, year, month, day)) return date;
   int weekday = weekdayIndexFor(year, month, day);
   char buffer[16];
-  snprintf(buffer, sizeof(buffer), "%s %d %s", kWeekdayNames[weekday], day,
-           kMonthNames[month - 1]);
+  snprintf(buffer, sizeof(buffer), "%s %d", kWeekdayNames[weekday], day);
   return std::string(buffer);
 }
 
@@ -88,25 +83,25 @@ std::string formatPercent(double value) {
 }
 
 void appendWeatherDetailLines(const WeatherPanel& weather, std::vector<std::string>& lines) {
-  if (weather.hasApparentTemperatureC) {
-    lines.push_back("Feels like " + formatOneDecimal(weather.apparentTemperatureC) + "C");
-  }
-  if (weather.hasRelativeHumidityPercent) {
-    lines.push_back("Humidity " + formatWholeNumber(weather.relativeHumidityPercent) + "%");
-  }
-  if (weather.hasPrecipitationMm) {
-    lines.push_back("Precip " + formatOneDecimal(weather.precipitationMm) + "mm");
-  }
-  if (weather.hasRainChanceNext6HoursPercent) {
-    lines.push_back("Rain (6h) " + formatWholeNumber(weather.rainChanceNext6HoursPercent) + "%");
-  }
-  if (weather.hasPressureMslHpa) {
-    lines.push_back("Pressure " + formatTwoDecimals(weather.pressureMslHpa) + "hPa");
-  }
-  if (weather.hasTemperatureMinTodayC && weather.hasTemperatureMaxTodayC) {
-    lines.push_back("Min " + formatOneDecimal(weather.temperatureMinTodayC) + "C / Max " +
-                     formatOneDecimal(weather.temperatureMaxTodayC) + "C");
-  }
+  lines.push_back(weather.hasApparentTemperatureC
+                      ? "Feels like " + formatOneDecimal(weather.apparentTemperatureC) + "C"
+                      : "");
+  lines.push_back(weather.hasRelativeHumidityPercent
+                      ? "Humidity " + formatWholeNumber(weather.relativeHumidityPercent) + "%"
+                      : "");
+  lines.push_back(weather.hasPrecipitationMm
+                      ? "Precip " + formatOneDecimal(weather.precipitationMm) + "mm"
+                      : "");
+  lines.push_back(weather.hasRainChanceNext6HoursPercent
+                      ? "Rain (6h) " + formatWholeNumber(weather.rainChanceNext6HoursPercent) + "%"
+                      : "");
+  lines.push_back(weather.hasPressureMslHpa
+                      ? "Pressure " + formatTwoDecimals(weather.pressureMslHpa) + "hPa"
+                      : "");
+  lines.push_back(weather.hasTemperatureMinTodayC && weather.hasTemperatureMaxTodayC
+                      ? "Today " + formatOneDecimal(weather.temperatureMinTodayC) + "C / " +
+                            formatOneDecimal(weather.temperatureMaxTodayC) + "C"
+                      : "");
 }
 
 std::string weatherWarningTextFor(const WeatherPanel& weather) {
@@ -173,6 +168,7 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
   if (model.weather.hasTemperatureC && model.weather.hasCondition) {
     layout.hasWeatherText = true;
     layout.weatherText = formatOneDecimal(model.weather.temperatureC) + "C";
+    layout.weatherConditionText = "Now: " + model.weather.condition;
     layout.hasWeatherIcon = true;
     layout.weatherIconKind =
         weatherIconKindFor(model.weather.hasWeatherCode, model.weather.weatherCode);
@@ -208,6 +204,9 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
         row.coachText = std::to_string(departure.coachCount) + " coaches";
       }
       row.emphasis = emphasisFor(departure);
+      if (row.emphasis == RowEmphasis::Delayed) {
+        row.statusText = "Expected " + row.statusText;
+      }
       row.hasReason = departure.hasReason;
       if (row.hasReason) {
         row.reasonText = departure.reason;
@@ -219,11 +218,9 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
       DailyForecastRow row;
       row.dateText = formatDailyDateText(day.date);
       row.icon = weatherIconKindFor(true, day.weatherCode);
-      row.hasRainChance = shouldShowRainChance(row.icon);
-      if (row.hasRainChance) {
-        row.rainChanceText = formatPercent(day.rainChancePercent);
-      }
-      row.tempRangeText = formatRoundedWhole(day.temperatureMinC) + "-" +
+      row.hasRainChance = true;
+      row.rainChanceText = formatPercent(day.rainChancePercent);
+      row.tempRangeText = formatRoundedWhole(day.temperatureMinC) + "C / " +
                            formatRoundedWhole(day.temperatureMaxC) + "C";
       layout.dailyRows.push_back(row);
     }
@@ -232,10 +229,8 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
       HourlyForecastRow row;
       row.timeText = extractTimeOfDay(hour.time);
       row.icon = weatherIconKindFor(true, hour.weatherCode);
-      row.hasRainChance = shouldShowRainChance(row.icon);
-      if (row.hasRainChance) {
-        row.rainChanceText = formatPercent(hour.rainChancePercent);
-      }
+      row.hasRainChance = true;
+      row.rainChanceText = formatPercent(hour.rainChancePercent);
       row.tempText = formatRoundedWhole(hour.temperatureC) + "C";
       layout.hourlyRows.push_back(row);
     }

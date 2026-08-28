@@ -62,6 +62,7 @@ struct LayoutResult {
   std::string statusBannerText;
   bool hasWeatherText;
   std::string weatherText;
+  std::string weatherConditionText;
   bool hasWeatherIcon;
   WeatherIconKind weatherIconKind;
   std::vector<std::string> weatherDetailLines;

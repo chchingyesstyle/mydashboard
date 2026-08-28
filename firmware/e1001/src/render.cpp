@@ -61,14 +61,29 @@ void drawDepartureRows(const LayoutResult& layout) {
     } else {
       display.setTextColor(GxEPD_BLACK);
     }
+    if (row.emphasis == RowEmphasis::Delayed) {
+      display.fillRect(0, y, 6, rowHeight, GxEPD_BLACK);
+    }
 
     display.setFont(&FreeSansBold18pt7b);
     display.setCursor(6, y + 24);
     display.print(row.time.c_str());
 
-    display.setFont(&FreeSans9pt7b);
-    display.setCursor(110, y + 22);
-    display.print(row.statusText.c_str());
+    if (row.emphasis == RowEmphasis::Delayed) {
+      display.setFont(&FreeSansBold9pt7b);
+      int16_t x1, y1;
+      uint16_t statusWidth, statusHeight;
+      display.getTextBounds(row.statusText.c_str(), 0, 0, &x1, &y1, &statusWidth, &statusHeight);
+      display.fillRect(104, y + 3, statusWidth + 12, 24, GxEPD_BLACK);
+      display.setTextColor(GxEPD_WHITE);
+      display.setCursor(110, y + 21);
+      display.print(row.statusText.c_str());
+      display.setTextColor(GxEPD_BLACK);
+    } else {
+      display.setFont(&FreeSans9pt7b);
+      display.setCursor(110, y + 22);
+      display.print(row.statusText.c_str());
+    }
 
     display.setCursor(6, y + 42);
     std::string secondLine = row.platformText + "  ";
@@ -155,28 +170,53 @@ void drawWeatherIcon(WeatherIconKind kind, int cx, int cy, double scale = 1.0) {
 }
 
 void drawWeather(const LayoutResult& layout) {
-  int y = kHeaderHeight + 48;
+  constexpr int kWeatherX = kColumnDividerX + 10;
+  constexpr int kMetricRightX = kColumnDividerX + 165;
+  constexpr int kWarningTop = kRightColumnMidY - 48;
+
   display.setFont(&FreeSansBold24pt7b);
-  display.setCursor(kColumnDividerX + 10, y);
+  display.setCursor(kWeatherX, kHeaderHeight + 50);
   if (layout.hasWeatherText) {
     display.print(layout.weatherText.c_str());
   }
   if (layout.hasWeatherIcon) {
-    drawWeatherIcon(layout.weatherIconKind, kColumnDividerX + 215, y - 8);
+    drawWeatherIcon(layout.weatherIconKind, kColumnDividerX + 215, kHeaderHeight + 42);
   }
 
-  display.setFont(&FreeSans12pt7b);
-  y += 40;
-  for (const auto& line : layout.weatherDetailLines) {
-    display.setCursor(kColumnDividerX + 10, y);
+  display.setFont(&FreeSans9pt7b);
+  display.setCursor(kWeatherX, kHeaderHeight + 79);
+  display.print(layout.weatherConditionText.c_str());
+
+  const int metricOffsetY = layout.hasWeatherWarning ? 0 : 28;
+  const int metricRows[] = {
+      kHeaderHeight + 94 + metricOffsetY,
+      kHeaderHeight + 116 + metricOffsetY,
+  };
+  for (int i = 0; i < 4; i++) {
+    const std::string& line = layout.weatherDetailLines[i];
+    if (line.empty()) continue;
+    int x = i % 2 == 0 ? kWeatherX : kMetricRightX;
+    display.setCursor(x, metricRows[i / 2]);
     display.print(line.c_str());
-    y += 20;
+  }
+  for (int i = 4; i < 6; i++) {
+    const std::string& line = layout.weatherDetailLines[i];
+    if (line.empty()) continue;
+    display.setCursor(kWeatherX, kHeaderHeight + 138 + metricOffsetY + (i - 4) * 20);
+    display.print(line.c_str());
   }
 
   if (layout.hasWeatherWarning) {
+    display.fillRect(kColumnDividerX + 1, kWarningTop, kScreenWidth - kColumnDividerX - 1,
+                     kRightColumnMidY - kWarningTop, GxEPD_BLACK);
+    display.setTextColor(GxEPD_WHITE);
+    display.setFont(&FreeSansBold9pt7b);
+    display.setCursor(kWeatherX, kWarningTop + 16);
+    display.print("WEATHER WARNING");
     display.setFont(&FreeSans9pt7b);
-    display.setCursor(kColumnDividerX + 10, y);
+    display.setCursor(kWeatherX, kWarningTop + 35);
     display.print(layout.weatherWarningText.c_str());
+    display.setTextColor(GxEPD_BLACK);
   }
 }
 
@@ -211,41 +251,35 @@ void drawElectricity(const LayoutResult& layout) {
 // leaving the right column's weather+electricity untouched, same split as
 // the departures screens.
 
-// Measures text in whatever font is currently set, without drawing it.
-int measuredTextWidth(const std::string& text) {
-  int16_t x1, y1;
-  uint16_t textWidth, textHeight;
-  display.getTextBounds(text.c_str(), 0, 0, &x1, &y1, &textWidth, &textHeight);
-  return static_cast<int>(textWidth);
-}
-
 void drawDailyForecastRows(const LayoutResult& layout) {
   const int rowHeight = (kScreenHeight - kHeaderHeight) / 7;
-  const int iconScale100 = 55;  // drawWeatherIcon scale, as a percent
-  const int iconVisualRadius = 32 * iconScale100 / 100;  // sun ray reach at this scale
+  const int iconScale100 = 45;  // drawWeatherIcon scale, as a percent
+  constexpr int kIconCenterX = 180;
+  constexpr int kRainX = 230;
+  constexpr int kTemperatureRangeX = 350;
+
+  display.setFont(&FreeSans9pt7b);
+  display.setCursor(kRainX, 25);
+  display.print("Rain");
+  display.setCursor(kTemperatureRangeX, 25);
+  display.print("Low / High");
+
   int y = kHeaderHeight;
   for (const auto& row : layout.dailyRows) {
     int midY = y + rowHeight / 2;
-    int x = 10;
 
-    display.setFont(&FreeSansBold18pt7b);
-    display.setCursor(x, midY + 8);
+    display.setFont(&FreeSansBold12pt7b);
+    display.setCursor(10, midY + 6);
     display.print(row.dateText.c_str());
-    x += measuredTextWidth(row.dateText) + 30;
 
-    int iconCx = x + iconVisualRadius;
-    drawWeatherIcon(row.icon, iconCx, midY, iconScale100 / 100.0);
-    x = iconCx + iconVisualRadius + 14;
+    drawWeatherIcon(row.icon, kIconCenterX, midY, iconScale100 / 100.0);
 
     display.setFont(&FreeSans12pt7b);
-    if (row.hasRainChance) {
-      display.setCursor(x, midY + 6);
-      display.print(row.rainChanceText.c_str());
-    }
+    display.setCursor(kRainX, midY + 6);
+    display.print(row.rainChanceText.c_str());
 
-    display.setFont(&FreeSansBold18pt7b);
-    int tempRangeX = kColumnDividerX - 15 - measuredTextWidth(row.tempRangeText);
-    display.setCursor(tempRangeX, midY + 8);
+    display.setFont(&FreeSansBold12pt7b);
+    display.setCursor(kTemperatureRangeX, midY + 6);
     display.print(row.tempRangeText.c_str());
 
     y += rowHeight;
@@ -259,7 +293,19 @@ void drawHourlyForecastRows(const LayoutResult& layout) {
   const int rowHeight = (kScreenHeight - kHeaderHeight) / 6;
   const int columnWidth = kColumnDividerX / 2;
   const int iconScale100 = 30;
-  const int iconVisualRadius = 32 * iconScale100 / 100;
+  constexpr int kIconCenterOffset = 85;
+  constexpr int kRainOffset = 130;
+  constexpr int kTemperatureOffset = 190;
+
+  display.setFont(&FreeSans9pt7b);
+  for (int column = 0; column < 2; column++) {
+    int columnX = column * columnWidth;
+    display.setCursor(columnX + kRainOffset, 25);
+    display.print("Rain");
+    display.setCursor(columnX + kTemperatureOffset, 25);
+    display.print("Temp");
+  }
+
   for (size_t i = 0; i < layout.hourlyRows.size(); i++) {
     const auto& row = layout.hourlyRows[i];
     int column = static_cast<int>(i) < 6 ? 0 : 1;
@@ -267,26 +313,18 @@ void drawHourlyForecastRows(const LayoutResult& layout) {
     int columnX = column * columnWidth;
     int y = kHeaderHeight + rowInColumn * rowHeight;
     int midY = y + rowHeight / 2;
-    int x = columnX + 6;
-
     display.setFont(&FreeSansBold12pt7b);
-    display.setCursor(x, midY + 6);
+    display.setCursor(columnX + 6, midY + 6);
     display.print(row.timeText.c_str());
-    x += measuredTextWidth(row.timeText) + 10;
 
-    int iconCx = x + iconVisualRadius;
-    drawWeatherIcon(row.icon, iconCx, midY, iconScale100 / 100.0);
-    x = iconCx + iconVisualRadius + 6;
+    drawWeatherIcon(row.icon, columnX + kIconCenterOffset, midY, iconScale100 / 100.0);
 
     display.setFont(&FreeSans9pt7b);
-    if (row.hasRainChance) {
-      display.setCursor(x, midY + 5);
-      display.print(row.rainChanceText.c_str());
-      x += measuredTextWidth(row.rainChanceText) + 8;
-    }
+    display.setCursor(columnX + kRainOffset, midY + 5);
+    display.print(row.rainChanceText.c_str());
 
     display.setFont(&FreeSansBold12pt7b);
-    display.setCursor(x, midY + 6);
+    display.setCursor(columnX + kTemperatureOffset, midY + 6);
     display.print(row.tempText.c_str());
 
     if (rowInColumn > 0) {

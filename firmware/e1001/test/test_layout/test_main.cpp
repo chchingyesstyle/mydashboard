@@ -122,6 +122,7 @@ void test_delayed_departure_gets_delayed_emphasis() {
   LayoutResult layout = computeLayout(model, kMaxRows);
 
   TEST_ASSERT_TRUE(layout.rows[0].emphasis == RowEmphasis::Delayed);
+  TEST_ASSERT_EQUAL_STRING("Expected 09:11", layout.rows[0].statusText.c_str());
 }
 
 void test_row_count_is_capped_at_max_rows() {
@@ -168,6 +169,7 @@ void test_weather_text_formatting_and_missing_weather() {
   LayoutResult layout = computeLayout(model, kMaxRows);
   TEST_ASSERT_TRUE(layout.hasWeatherText);
   TEST_ASSERT_EQUAL_STRING("12.4C", layout.weatherText.c_str());
+  TEST_ASSERT_EQUAL_STRING("Now: Partly cloudy", layout.weatherConditionText.c_str());
   TEST_ASSERT_TRUE(layout.hasWeatherIcon);
   TEST_ASSERT_EQUAL(static_cast<int>(WeatherIconKind::PartlyCloudy),
                      static_cast<int>(layout.weatherIconKind));
@@ -180,6 +182,7 @@ void test_weather_text_formatting_and_missing_weather() {
 
   LayoutResult layoutWithoutWeather = computeLayout(modelWithoutWeather, kMaxRows);
   TEST_ASSERT_FALSE(layoutWithoutWeather.hasWeatherText);
+  TEST_ASSERT_EQUAL_STRING("", layoutWithoutWeather.weatherConditionText.c_str());
   TEST_ASSERT_FALSE(layoutWithoutWeather.hasWeatherIcon);
 }
 
@@ -222,7 +225,7 @@ void test_weather_icon_kind_mapping() {
                      static_cast<int>(weatherIconKindFor(false, 0)));
 }
 
-void test_weather_detail_lines_include_only_present_fields() {
+void test_weather_detail_slots_keep_grid_positions_when_fields_are_missing() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
   model.weather.hasApparentTemperatureC = true;
@@ -239,10 +242,13 @@ void test_weather_detail_lines_include_only_present_fields() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  TEST_ASSERT_EQUAL(3, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL(6, (int)layout.weatherDetailLines.size());
   TEST_ASSERT_EQUAL_STRING("Feels like 11.1C", layout.weatherDetailLines[0].c_str());
   TEST_ASSERT_EQUAL_STRING("Humidity 63%", layout.weatherDetailLines[1].c_str());
-  TEST_ASSERT_EQUAL_STRING("Rain (6h) 20%", layout.weatherDetailLines[2].c_str());
+  TEST_ASSERT_EQUAL_STRING("", layout.weatherDetailLines[2].c_str());
+  TEST_ASSERT_EQUAL_STRING("Rain (6h) 20%", layout.weatherDetailLines[3].c_str());
+  TEST_ASSERT_EQUAL_STRING("", layout.weatherDetailLines[4].c_str());
+  TEST_ASSERT_EQUAL_STRING("", layout.weatherDetailLines[5].c_str());
 }
 
 void test_precipitation_line_keeps_one_decimal_place() {
@@ -260,8 +266,8 @@ void test_precipitation_line_keeps_one_decimal_place() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  TEST_ASSERT_EQUAL(1, (int)layout.weatherDetailLines.size());
-  TEST_ASSERT_EQUAL_STRING("Precip 0.3mm", layout.weatherDetailLines[0].c_str());
+  TEST_ASSERT_EQUAL(6, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL_STRING("Precip 0.3mm", layout.weatherDetailLines[2].c_str());
 }
 
 void test_pressure_and_today_min_max_lines() {
@@ -281,12 +287,12 @@ void test_pressure_and_today_min_max_lines() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  TEST_ASSERT_EQUAL(2, (int)layout.weatherDetailLines.size());
-  TEST_ASSERT_EQUAL_STRING("Pressure 1016.40hPa", layout.weatherDetailLines[0].c_str());
-  TEST_ASSERT_EQUAL_STRING("Min 13.2C / Max 26.8C", layout.weatherDetailLines[1].c_str());
+  TEST_ASSERT_EQUAL(6, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL_STRING("Pressure 1016.40hPa", layout.weatherDetailLines[4].c_str());
+  TEST_ASSERT_EQUAL_STRING("Today 13.2C / 26.8C", layout.weatherDetailLines[5].c_str());
 }
 
-void test_today_min_max_line_omitted_when_either_missing() {
+void test_today_min_max_slot_is_empty_when_either_value_is_missing() {
   DashboardModel model;
   model.status = DashboardStatus::Live;
   model.weather.hasApparentTemperatureC = false;
@@ -301,7 +307,8 @@ void test_today_min_max_line_omitted_when_either_missing() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  TEST_ASSERT_EQUAL(0, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL(6, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL_STRING("", layout.weatherDetailLines[5].c_str());
 }
 
 void test_weather_warning_kept_separate_from_detail_lines() {
@@ -323,8 +330,8 @@ void test_weather_warning_kept_separate_from_detail_lines() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  TEST_ASSERT_EQUAL(1, (int)layout.weatherDetailLines.size());
-  TEST_ASSERT_EQUAL_STRING("Min 13.2C / Max 26.8C", layout.weatherDetailLines[0].c_str());
+  TEST_ASSERT_EQUAL(6, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL_STRING("Today 13.2C / 26.8C", layout.weatherDetailLines[5].c_str());
   TEST_ASSERT_TRUE(layout.hasWeatherWarning);
   TEST_ASSERT_EQUAL_STRING(
       "Yellow thunderstorm warning", layout.weatherWarningText.c_str());
@@ -367,7 +374,7 @@ void test_weather_warning_absent_leaves_flag_and_text_unset() {
 
   LayoutResult layout = computeLayout(model, kMaxRows);
 
-  TEST_ASSERT_EQUAL(0, (int)layout.weatherDetailLines.size());
+  TEST_ASSERT_EQUAL(6, (int)layout.weatherDetailLines.size());
   TEST_ASSERT_FALSE(layout.hasWeatherWarning);
   TEST_ASSERT_EQUAL_STRING("", layout.weatherWarningText.c_str());
 }
@@ -473,7 +480,7 @@ void test_weekday_index_for_known_anchor_dates() {
   TEST_ASSERT_EQUAL(1, weekdayIndexFor(2024, 1, 1));   // Monday
 }
 
-void test_daily_forecast_layout_formats_date_icon_and_temp_range() {
+void test_daily_forecast_layout_uses_compact_aligned_weather_columns() {
   DashboardModel model;
   model.weather.dailyForecast.push_back(
       DailyForecastDay{"2026-08-24", 2, 13.2, 26.8, 60});
@@ -486,20 +493,21 @@ void test_daily_forecast_layout_formats_date_icon_and_temp_range() {
   TEST_ASSERT_EQUAL(2, (int)layout.dailyRows.size());
 
   const DailyForecastRow& monday = layout.dailyRows[0];
-  TEST_ASSERT_EQUAL_STRING("Mon 24 Aug", monday.dateText.c_str());
+  TEST_ASSERT_EQUAL_STRING("Mon 24", monday.dateText.c_str());
   TEST_ASSERT_TRUE(monday.icon == WeatherIconKind::PartlyCloudy);
-  TEST_ASSERT_FALSE(monday.hasRainChance);
-  TEST_ASSERT_EQUAL_STRING("13-27C", monday.tempRangeText.c_str());
+  TEST_ASSERT_TRUE(monday.hasRainChance);
+  TEST_ASSERT_EQUAL_STRING("60%", monday.rainChanceText.c_str());
+  TEST_ASSERT_EQUAL_STRING("13C / 27C", monday.tempRangeText.c_str());
 
   const DailyForecastRow& tuesday = layout.dailyRows[1];
-  TEST_ASSERT_EQUAL_STRING("Tue 25 Aug", tuesday.dateText.c_str());
+  TEST_ASSERT_EQUAL_STRING("Tue 25", tuesday.dateText.c_str());
   TEST_ASSERT_TRUE(tuesday.icon == WeatherIconKind::Rain);
   TEST_ASSERT_TRUE(tuesday.hasRainChance);
   TEST_ASSERT_EQUAL_STRING("80%", tuesday.rainChanceText.c_str());
-  TEST_ASSERT_EQUAL_STRING("14-25C", tuesday.tempRangeText.c_str());
+  TEST_ASSERT_EQUAL_STRING("14C / 25C", tuesday.tempRangeText.c_str());
 }
 
-void test_hourly_forecast_layout_formats_time_icon_and_temp() {
+void test_hourly_forecast_layout_keeps_rain_chance_for_every_hour() {
   DashboardModel model;
   model.weather.hourlyForecast.push_back(
       HourlyForecastEntry{"2026-08-24T09:00", 0, 21.6, 5});
@@ -514,7 +522,8 @@ void test_hourly_forecast_layout_formats_time_icon_and_temp() {
   const HourlyForecastRow& first = layout.hourlyRows[0];
   TEST_ASSERT_EQUAL_STRING("09:00", first.timeText.c_str());
   TEST_ASSERT_TRUE(first.icon == WeatherIconKind::Sun);
-  TEST_ASSERT_FALSE(first.hasRainChance);
+  TEST_ASSERT_TRUE(first.hasRainChance);
+  TEST_ASSERT_EQUAL_STRING("5%", first.rainChanceText.c_str());
   TEST_ASSERT_EQUAL_STRING("22C", first.tempText.c_str());
 
   const HourlyForecastRow& second = layout.hourlyRows[1];
@@ -555,10 +564,10 @@ int main(int argc, char **argv) {
   RUN_TEST(test_status_banner_text_for_each_dashboard_status);
   RUN_TEST(test_weather_text_formatting_and_missing_weather);
   RUN_TEST(test_weather_icon_kind_mapping);
-  RUN_TEST(test_weather_detail_lines_include_only_present_fields);
+  RUN_TEST(test_weather_detail_slots_keep_grid_positions_when_fields_are_missing);
   RUN_TEST(test_precipitation_line_keeps_one_decimal_place);
   RUN_TEST(test_pressure_and_today_min_max_lines);
-  RUN_TEST(test_today_min_max_line_omitted_when_either_missing);
+  RUN_TEST(test_today_min_max_slot_is_empty_when_either_value_is_missing);
   RUN_TEST(test_weather_warning_kept_separate_from_detail_lines);
   RUN_TEST(test_weather_warning_text_truncated_when_too_long);
   RUN_TEST(test_weather_warning_absent_leaves_flag_and_text_unset);
@@ -571,8 +580,8 @@ int main(int argc, char **argv) {
   RUN_TEST(test_battery_percent_from_voltage_interpolates_between_points);
   RUN_TEST(test_battery_percent_from_voltage_clamps_out_of_range);
   RUN_TEST(test_weekday_index_for_known_anchor_dates);
-  RUN_TEST(test_daily_forecast_layout_formats_date_icon_and_temp_range);
-  RUN_TEST(test_hourly_forecast_layout_formats_time_icon_and_temp);
+  RUN_TEST(test_daily_forecast_layout_uses_compact_aligned_weather_columns);
+  RUN_TEST(test_hourly_forecast_layout_keeps_rain_chance_for_every_hour);
   RUN_TEST(test_forecast_layout_passes_through_status_battery_and_refresh_text);
   return UNITY_END();
 }

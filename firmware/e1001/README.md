@@ -91,8 +91,11 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   TwelveHourWeather (both WFJ-ALL, since Watford's weather panel doesn't
   depend on the destination filter). The two weather screens replace the
   departures column with forecast rows; the right-hand
-  weather/electricity column is identical on every screen. Time-based
-  default: Commute from 6am-9am local time, otherwise SevenDayWeather.
+  weather/electricity column is identical on every screen. The forecast
+  layouts use fixed columns: every daily and hourly entry includes its rain
+  chance, and seven-day temperatures use a compact `lowC / highC` form.
+  Time-based default: Commute from 6am-9am local time, otherwise
+  SevenDayWeather.
   Outside Commute, each departure row also shows its destination and
   operator code (e.g. "to London Euston LM") since the destination is no
   longer implied by the route.
@@ -117,12 +120,20 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   attenuation, 2x divider compensation) and mapped to a percentage using
   Seeed's published reTerminal E1001 discharge curve. Shown at the top
   right of the header.
+- **Current weather:** the upper-right panel uses a temperature-and-icon
+  hero row, a separate `Now: <condition>` line, then a fixed two-column
+  metric grid (feels like, humidity, precipitation, six-hour rain chance,
+  pressure, and today's low/high). When no warning is present, the metrics
+  move down 28px to use the available space. This prevents sparse panels
+  from looking top-heavy while preserving space for warnings.
 - **Weather warning:** if `weather.warning` is present, its `event` label
-  (e.g. "Yellow thunderstorm warning") is shown on its own compact line
-  (9pt font) after the current-weather detail lines, since the full
-  headline sentence doesn't fit at the same size as the other lines and
-  cramping every line together to make room made the whole panel harder
-  to read.
+  appears in a dedicated inverted black banner at the bottom of the weather
+  half, headed `WEATHER WARNING`. The metrics stay in their compact position
+  above it so the banner cannot overlap them.
+- **Delayed trains:** a delayed departure has a black left-edge marker and
+  a high-contrast `Expected HH:MM` badge beside its scheduled time. This is
+  intentionally more prominent than the normal `On time` text; cancelled
+  trains keep their full inverted row treatment.
 - **Debug logging:** goes to `Serial0` (UART0, wired to the onboard CH340),
   not `Serial` — the XIAO ESP32-S3's board default routes `Serial` to
   native USB CDC, which this board doesn't expose.
