@@ -8,5 +8,9 @@ export const rthkNewsFixture = `<?xml version="1.0" encoding="UTF-8"?>
     <item><title>第三條即時新聞</title><link>https://news.rthk.hk/rthk/ch/component/k2/1003-20260828.htm</link><pubDate>Fri, 28 Aug 2026 09:00:00 GMT</pubDate></item>
     <item><title>第四條即時新聞</title><link>https://news.rthk.hk/rthk/ch/component/k2/1004-20260828.htm</link><pubDate>Fri, 28 Aug 2026 08:30:00 GMT</pubDate></item>
     <item><title>第五條即時新聞</title><link>https://news.rthk.hk/rthk/ch/component/k2/1005-20260828.htm</link><pubDate>Fri, 28 Aug 2026 08:00:00 GMT</pubDate></item>
+    <item><title>第六條即時新聞</title><link>https://news.rthk.hk/rthk/ch/component/k2/1006-20260828.htm</link><pubDate>Fri, 28 Aug 2026 07:30:00 GMT</pubDate></item>
+    <item><title>第七條即時新聞</title><link>https://news.rthk.hk/rthk/ch/component/k2/1007-20260828.htm</link><pubDate>Fri, 28 Aug 2026 07:00:00 GMT</pubDate></item>
+    <item><title>第八條即時新聞</title><link>https://news.rthk.hk/rthk/ch/component/k2/1008-20260828.htm</link><pubDate>Fri, 28 Aug 2026 06:30:00 GMT</pubDate></item>
+    <item><title>第九條即時新聞</title><link>https://news.rthk.hk/rthk/ch/component/k2/1009-20260828.htm</link><pubDate>Fri, 28 Aug 2026 06:00:00 GMT</pubDate></item>
   </channel>
 </rss>`;

@@ -221,12 +221,12 @@ void appendNewsRows(const NewsPanel& panel, bool hongKong, LayoutResult& layout)
     layout.newsUpdateText = layout.newsUnavailable ? "Unavailable" : "";
   }
 
-  const size_t topCount = panel.topStories.size() < 2 ? panel.topStories.size() : 2;
+  const size_t topCount = panel.topStories.size() < 3 ? panel.topStories.size() : 3;
   for (size_t i = 0; i < topCount; i++) {
     const NewsStory& story = panel.topStories[i];
     layout.newsTopRows.push_back(NewsStoryRow{story.title, formatNewsTime(story.publishedAt)});
   }
-  const size_t latestCount = panel.latestStories.size() < 3 ? panel.latestStories.size() : 3;
+  const size_t latestCount = panel.latestStories.size() < 6 ? panel.latestStories.size() : 6;
   for (size_t i = 0; i < latestCount; i++) {
     const NewsStory& story = panel.latestStories[i];
     layout.newsLatestRows.push_back(NewsStoryRow{story.title, formatNewsTime(story.publishedAt)});

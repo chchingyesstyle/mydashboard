@@ -278,8 +278,8 @@ void parseNewsPanel(JsonObject newsJson, NewsPanel& panel, const char* fallbackS
                      : fallbackSource;
   panel.topStories.clear();
   panel.latestStories.clear();
-  parseNewsStories(newsJson["topStories"], 2, panel.topStories);
-  parseNewsStories(newsJson["latestStories"], 3, panel.latestStories);
+  parseNewsStories(newsJson["topStories"], 3, panel.topStories);
+  parseNewsStories(newsJson["latestStories"], 6, panel.latestStories);
 }
 
 }  // namespace

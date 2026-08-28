@@ -138,12 +138,12 @@ export async function fetchNewsFeed(
   const stories = entriesFrom(parsed)
     .map(storyFrom)
     .filter((story): story is NewsStory => story !== null)
-    .slice(0, 5);
+    .slice(0, 9);
   if (stories.length === 0) malformedResponse();
 
   return {
     source: source.source,
-    topStories: stories.slice(0, 2),
-    latestStories: stories.slice(2, 5)
+    topStories: stories.slice(0, 3),
+    latestStories: stories.slice(3, 9)
   };
 }

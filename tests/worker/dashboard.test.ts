@@ -157,10 +157,10 @@ describe("dashboard service", () => {
         error: null
       }
     });
-    expect(dashboard.news.hongKong.topStories).toHaveLength(2);
-    expect(dashboard.news.hongKong.latestStories).toHaveLength(3);
-    expect(dashboard.news.unitedKingdom.topStories).toHaveLength(2);
-    expect(dashboard.news.unitedKingdom.latestStories).toHaveLength(3);
+    expect(dashboard.news.hongKong.topStories).toHaveLength(3);
+    expect(dashboard.news.hongKong.latestStories).toHaveLength(6);
+    expect(dashboard.news.unitedKingdom.topStories).toHaveLength(3);
+    expect(dashboard.news.unitedKingdom.latestStories).toHaveLength(6);
   });
 
   it("caches both RSS panels independently of route for five minutes", async () => {

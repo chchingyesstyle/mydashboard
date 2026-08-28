@@ -41,12 +41,18 @@ NewsPanel makeNewsPanel(const std::string& source, PanelStatus status, bool stal
   panel.source = source;
   panel.topStories = {
     NewsStory{"第一條新聞", "2026-08-24T08:45:00+01:00", "https://example.test/1"},
-    NewsStory{"Second headline", "2026-08-24T08:30:00+01:00", "https://example.test/2"}
+    NewsStory{"Second headline", "2026-08-24T08:30:00+01:00", "https://example.test/2"},
+    NewsStory{"Third top headline", "2026-08-24T08:15:00+01:00", "https://example.test/3"},
+    NewsStory{"Fourth top headline", "2026-08-24T08:00:00+01:00", "https://example.test/4"}
   };
   panel.latestStories = {
-    NewsStory{"Third headline", "2026-08-24T08:15:00+01:00", "https://example.test/3"},
-    NewsStory{"Fourth headline", "2026-08-24T08:00:00+01:00", "https://example.test/4"},
-    NewsStory{"Fifth headline", "2026-08-24T07:45:00+01:00", "https://example.test/5"}
+    NewsStory{"Third headline", "2026-08-24T07:45:00+01:00", "https://example.test/5"},
+    NewsStory{"Fourth headline", "2026-08-24T07:30:00+01:00", "https://example.test/6"},
+    NewsStory{"Fifth headline", "2026-08-24T07:15:00+01:00", "https://example.test/7"},
+    NewsStory{"Sixth headline", "2026-08-24T07:00:00+01:00", "https://example.test/8"},
+    NewsStory{"Seventh headline", "2026-08-24T06:45:00+01:00", "https://example.test/9"},
+    NewsStory{"Eighth headline", "2026-08-24T06:30:00+01:00", "https://example.test/10"},
+    NewsStory{"Ninth headline", "2026-08-24T06:15:00+01:00", "https://example.test/11"}
   };
   return panel;
 }
@@ -587,11 +593,11 @@ void test_hong_kong_news_layout_selects_traditional_chinese_panel() {
   TEST_ASSERT_EQUAL_STRING("最新消息", layout.newsLatestHeading.c_str());
   TEST_ASSERT_FALSE(layout.newsUnavailable);
   TEST_ASSERT_FALSE(layout.newsStale);
-  TEST_ASSERT_EQUAL(2, (int)layout.newsTopRows.size());
-  TEST_ASSERT_EQUAL(3, (int)layout.newsLatestRows.size());
+  TEST_ASSERT_EQUAL(3, (int)layout.newsTopRows.size());
+  TEST_ASSERT_EQUAL(6, (int)layout.newsLatestRows.size());
   TEST_ASSERT_EQUAL_STRING("第一條新聞", layout.newsTopRows[0].title.c_str());
   TEST_ASSERT_EQUAL_STRING("08:45", layout.newsTopRows[0].publishedTime.c_str());
-  TEST_ASSERT_EQUAL_STRING("Fifth headline", layout.newsLatestRows[2].title.c_str());
+  TEST_ASSERT_EQUAL_STRING("Eighth headline", layout.newsLatestRows[5].title.c_str());
   TEST_ASSERT_TRUE(layout.hasWeatherText);
   TEST_ASSERT_EQUAL_STRING("21.4C", layout.weatherText.c_str());
   TEST_ASSERT_EQUAL(1, (int)layout.electricityRows.size());
@@ -620,7 +626,7 @@ void test_news_layout_marks_stale_and_hides_unavailable_stories() {
 
   TEST_ASSERT_TRUE(stale.newsStale);
   TEST_ASSERT_TRUE(stale.newsUpdateText.find("Stale") != std::string::npos);
-  TEST_ASSERT_EQUAL(2, (int)stale.newsTopRows.size());
+  TEST_ASSERT_EQUAL(3, (int)stale.newsTopRows.size());
 
   DashboardModel unavailableModel{};
   unavailableModel.weather.hasTemperatureC = true;

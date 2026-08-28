@@ -423,8 +423,10 @@ void drawNewsRows(const LayoutResult& layout) {
   constexpr int kNewsX = 10;
   constexpr int kNewsRight = kColumnDividerX - 10;
   constexpr int kNewsWidth = kNewsRight - kNewsX;
-  constexpr int kTopLineHeight = 20;
-  constexpr int kLatestLineHeight = 27;
+  constexpr int kTopLineHeight = 18;
+  constexpr int kTopRowGap = 3;
+  constexpr int kLatestLineHeight = 17;
+  constexpr int kLatestRowHeight = kLatestLineHeight * 2;
 
   u8g2.setFont(u8g2_font_unifont_h_chinese4);
   u8g2.setFontMode(1);
@@ -452,7 +454,7 @@ void drawNewsRows(const LayoutResult& layout) {
       u8g2.drawUTF8(kNewsX, y, line.c_str());
       y += kTopLineHeight;
     }
-    y += 5;
+    y += kTopRowGap;
   }
   if (layout.newsTopRows.empty()) {
     u8g2.drawUTF8(kNewsX, y, "No headlines available");
@@ -467,12 +469,16 @@ void drawNewsRows(const LayoutResult& layout) {
   constexpr int kLatestTimeWidth = 45;
   const int latestTitleWidth = kNewsWidth - kLatestTimeWidth - 8;
   for (const auto& row : layout.newsLatestRows) {
-    const std::string title = fitUtf8Line(row.title, latestTitleWidth);
-    u8g2.drawUTF8(kNewsX, y, title.c_str());
-    if (!row.publishedTime.empty()) {
-      drawUtf8RightAligned(row.publishedTime, kNewsRight, y);
+    const std::vector<std::string> lines = wrapUtf8(row.title, latestTitleWidth, 2);
+    int lineY = y;
+    for (size_t lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+      u8g2.drawUTF8(kNewsX, lineY, lines[lineIndex].c_str());
+      if (lineIndex == 0 && !row.publishedTime.empty()) {
+        drawUtf8RightAligned(row.publishedTime, kNewsRight, lineY);
+      }
+      lineY += kLatestLineHeight;
     }
-    y += kLatestLineHeight;
+    y += kLatestRowHeight;
   }
   if (layout.newsLatestRows.empty()) {
     u8g2.drawUTF8(kNewsX, y, "No recent headlines");

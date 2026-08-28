@@ -96,8 +96,9 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   filter. Every screen keeps the same right-hand weather/electricity column.
   Forecast layouts use fixed columns: every daily and hourly entry includes
   its rain chance, and seven-day temperatures use a compact `lowC / highC`
-  form. News screens show the feed source/update state, two wrapped top
-  stories, and three latest headlines with Europe/London publication times;
+  form. News screens show the feed source/update state, three wrapped top
+  stories, and six latest headlines (wrapping to two lines when needed) with
+  Europe/London publication times;
   Hong Kong uses Traditional Chinese labels and glyphs while the UK screen
   uses English labels.
   Time-based default: Commute from 6am-9am local time, otherwise

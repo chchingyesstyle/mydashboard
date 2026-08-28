@@ -586,10 +586,18 @@ void test_parses_live_and_stale_news_panels_with_utf8_titles() {
         "source": "RTHK News",
         "topStories": [
           {"title": "香港最新消息", "publishedAt": "2026-08-24T07:55:00.000Z", "url": "https://news.rthk.hk/story/1"},
-          {"title": "第二條新聞", "publishedAt": "2026-08-24T07:50:00.000Z", "url": "https://news.rthk.hk/story/2"}
+          {"title": "第二條新聞", "publishedAt": "2026-08-24T07:50:00.000Z", "url": "https://news.rthk.hk/story/2"},
+          {"title": "第三條新聞", "publishedAt": "2026-08-24T07:45:00.000Z", "url": "https://news.rthk.hk/story/3"},
+          {"title": "第四條新聞", "publishedAt": "2026-08-24T07:40:00.000Z", "url": "https://news.rthk.hk/story/4"}
         ],
         "latestStories": [
-          {"title": "第三條新聞", "publishedAt": "2026-08-24T07:45:00.000Z", "url": "https://news.rthk.hk/story/3"}
+          {"title": "第五條新聞", "publishedAt": "2026-08-24T07:35:00.000Z", "url": "https://news.rthk.hk/story/5"},
+          {"title": "第六條新聞", "publishedAt": "2026-08-24T07:30:00.000Z", "url": "https://news.rthk.hk/story/6"},
+          {"title": "第七條新聞", "publishedAt": "2026-08-24T07:25:00.000Z", "url": "https://news.rthk.hk/story/7"},
+          {"title": "第八條新聞", "publishedAt": "2026-08-24T07:20:00.000Z", "url": "https://news.rthk.hk/story/8"},
+          {"title": "第九條新聞", "publishedAt": "2026-08-24T07:15:00.000Z", "url": "https://news.rthk.hk/story/9"},
+          {"title": "第十條新聞", "publishedAt": "2026-08-24T07:10:00.000Z", "url": "https://news.rthk.hk/story/10"},
+          {"title": "第十一條新聞", "publishedAt": "2026-08-24T07:05:00.000Z", "url": "https://news.rthk.hk/story/11"}
         ],
         "error": null
       },
@@ -613,11 +621,12 @@ void test_parses_live_and_stale_news_panels_with_utf8_titles() {
   TEST_ASSERT_TRUE(result.model.news.hongKong.status == PanelStatus::Live);
   TEST_ASSERT_FALSE(result.model.news.hongKong.stale);
   TEST_ASSERT_EQUAL_STRING("RTHK News", result.model.news.hongKong.source.c_str());
-  TEST_ASSERT_EQUAL(2, (int)result.model.news.hongKong.topStories.size());
+  TEST_ASSERT_EQUAL(3, (int)result.model.news.hongKong.topStories.size());
   TEST_ASSERT_EQUAL_STRING("香港最新消息", result.model.news.hongKong.topStories[0].title.c_str());
   TEST_ASSERT_EQUAL_STRING("2026-08-24T07:55:00.000Z", result.model.news.hongKong.topStories[0].publishedAt.c_str());
   TEST_ASSERT_EQUAL_STRING("https://news.rthk.hk/story/1", result.model.news.hongKong.topStories[0].url.c_str());
-  TEST_ASSERT_EQUAL(1, (int)result.model.news.hongKong.latestStories.size());
+  TEST_ASSERT_EQUAL(6, (int)result.model.news.hongKong.latestStories.size());
+  TEST_ASSERT_EQUAL_STRING("第十條新聞", result.model.news.hongKong.latestStories[5].title.c_str());
 
   TEST_ASSERT_TRUE(result.model.news.unitedKingdom.status == PanelStatus::Stale);
   TEST_ASSERT_TRUE(result.model.news.unitedKingdom.stale);

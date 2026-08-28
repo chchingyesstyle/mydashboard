@@ -25,12 +25,20 @@ describe("RSS news provider", () => {
         title: "第二條繁體中文新聞",
         publishedAt: "2026-08-28T09:30:00.000Z",
         url: "https://news.rthk.hk/rthk/ch/component/k2/1002-20260828.htm"
+      },
+      {
+        title: "第三條即時新聞",
+        publishedAt: "2026-08-28T09:00:00.000Z",
+        url: "https://news.rthk.hk/rthk/ch/component/k2/1003-20260828.htm"
       }
     ]);
     expect(feed.latestStories.map(({ title }) => title)).toEqual([
-      "第三條即時新聞",
       "第四條即時新聞",
-      "第五條即時新聞"
+      "第五條即時新聞",
+      "第六條即時新聞",
+      "第七條即時新聞",
+      "第八條即時新聞",
+      "第九條即時新聞"
     ]);
   });
 
@@ -41,11 +49,11 @@ describe("RSS news provider", () => {
     );
 
     expect(feed.source).toBe("BBC News");
-    expect(feed.topStories).toHaveLength(2);
-    expect(feed.latestStories).toHaveLength(3);
-    expect(feed.latestStories[2]).toMatchObject({
-      title: "Fifth UK headline",
-      publishedAt: "2026-08-28T08:00:00.000Z"
+    expect(feed.topStories).toHaveLength(3);
+    expect(feed.latestStories).toHaveLength(6);
+    expect(feed.latestStories[5]).toMatchObject({
+      title: "Ninth UK headline",
+      publishedAt: "2026-08-28T06:00:00.000Z"
     });
   });
 
@@ -86,17 +94,21 @@ describe("RSS news provider", () => {
     ]);
   });
 
-  it("keeps available valid stories when a feed has fewer than five", async () => {
+  it("keeps available valid stories when a feed has fewer than nine", async () => {
+    const shortFixture = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <item><title>第一條新聞</title><link>https://news.rthk.hk/story/1</link><pubDate>Fri, 28 Aug 2026 10:00:00 GMT</pubDate></item>
+  <item><title>第二條新聞</title><link>https://news.rthk.hk/story/2</link><pubDate>Fri, 28 Aug 2026 09:30:00 GMT</pubDate></item>
+  <item><title>第三條新聞</title><link>https://news.rthk.hk/story/3</link><pubDate>Fri, 28 Aug 2026 09:00:00 GMT</pubDate></item>
+  <item><title>第四條新聞</title><link>https://news.rthk.hk/story/4</link><pubDate>Fri, 28 Aug 2026 08:30:00 GMT</pubDate></item>
+</channel></rss>`;
     const feed = await fetchNewsFeed(
-      (async () => new Response(rthkNewsFixture.replace(
-        /<item><title>第五條即時新聞<\/title>[\s\S]*?<\/item>/,
-        ""
-      ))) as typeof fetch,
+      (async () => new Response(shortFixture)) as typeof fetch,
       HONG_KONG_NEWS_SOURCE
     );
 
-    expect(feed.topStories).toHaveLength(2);
-    expect(feed.latestStories).toHaveLength(2);
+    expect(feed.topStories).toHaveLength(3);
+    expect(feed.latestStories).toHaveLength(1);
   });
 
   it("rejects a feed with no valid stories", async () => {

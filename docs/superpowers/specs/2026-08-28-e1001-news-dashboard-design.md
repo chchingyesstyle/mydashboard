@@ -33,8 +33,8 @@ Out of scope:
   `https://rthk.hk/rthk/news/rss/c_expressnews_clocal.xml`.
 - UK uses BBC News's official headline RSS feed:
   `https://feeds.bbci.co.uk/news/rss.xml`.
-- Each feed's first two valid entries are `topStories`: editorial headline
-  order is the accepted definition of “popular”. The next three valid entries
+- Each feed's first three valid entries are `topStories`: editorial headline
+  order is the accepted definition of “popular”. The next six valid entries
   are `latestStories`; the two lists never overlap.
 - The API stores and the E1001 displays only title, publication time, article
   URL, and source attribution. It does not retain or render descriptions or
@@ -58,8 +58,8 @@ interface NewsPanel {
   updatedAt: string | null;
   stale: boolean;
   source: string;
-  topStories: NewsStory[];    // at most 2
-  latestStories: NewsStory[]; // at most 3
+  topStories: NewsStory[];    // at most 3
+  latestStories: NewsStory[]; // at most 6
   error: string | null;
 }
 
@@ -74,7 +74,7 @@ interface DashboardPayload {
 
 A focused RSS provider parses RSS XML with a maintained XML parser dependency,
 decodes headline text as UTF-8, converts valid publication timestamps to ISO
-8601 UTC, and skips malformed entries. A feed with fewer than five valid
+8601 UTC, and skips malformed entries. A feed with fewer than nine valid
 entries returns the available entries rather than failing the whole panel. A
 panel with no valid entry is unavailable.
 
@@ -111,8 +111,9 @@ right-column weather remains Watford Junction weather. Their left column is
 480px wide below the existing header and renders:
 
 1. source name and news update time;
-2. `Top Stories` with two larger, wrapped titles;
-3. `Latest` with three smaller titles and Europe/London publication times.
+2. `Top Stories` with three larger, wrapped titles;
+3. `Latest` with six smaller titles, wrapping to two lines when needed, and
+   Europe/London publication times aligned to the right.
 
 The Hong Kong screen uses Chinese section labels and the incoming Traditional
 Chinese titles. The UK screen uses the English labels `Top Stories` and
