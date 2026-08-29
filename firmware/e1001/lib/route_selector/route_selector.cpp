@@ -24,15 +24,14 @@ std::string routeTitleForMode(RouteMode mode) {
 Screen timeBasedDefaultScreen(int hourOfDay) {
   return routeModeForHour(hourOfDay) == RouteMode::Commute
              ? Screen::Commute
-             : Screen::SevenDayWeather;
+             : Screen::Forecast;
 }
 
 RouteMode routeModeForScreen(Screen screen) {
   switch (screen) {
     case Screen::Commute: return RouteMode::Commute;
     case Screen::AllDepartures:
-    case Screen::SevenDayWeather:
-    case Screen::TwelveHourWeather:
+    case Screen::Forecast:
     case Screen::HongKongNews:
     case Screen::UkNews:
       return RouteMode::AllDepartures;
@@ -48,8 +47,7 @@ std::string screenTitle(Screen screen) {
   switch (screen) {
     case Screen::Commute: return routeTitleForMode(RouteMode::Commute);
     case Screen::AllDepartures: return routeTitleForMode(RouteMode::AllDepartures);
-    case Screen::SevenDayWeather: return "7-Day Forecast";
-    case Screen::TwelveHourWeather: return "Next 12 Hours";
+    case Screen::Forecast: return "Forecast";
     case Screen::HongKongNews: return "Hong Kong News";
     case Screen::UkNews: return "UK News";
   }
@@ -73,6 +71,19 @@ int nextScreenCycleIndex(int currentIndex, bool overrideButtonPressed,
     return (currentIndex + 1) % kScreenCycleLength;
   }
   return screenCycleIndexFor(timeBasedDefault);
+}
+
+std::string requestEtagForScreen(const std::string& storedEtag,
+                                 int requestedScreenCycleIndex,
+                                 int renderedScreenCycleIndex) {
+  return requestedScreenCycleIndex == renderedScreenCycleIndex
+             ? storedEtag
+             : "";
+}
+
+int screenCycleIndexAfterRender(int currentIndex, int requestedIndex,
+                                bool renderSucceeded) {
+  return renderSucceeded ? requestedIndex : currentIndex;
 }
 
 int sleepMinutesForHour(int hourOfDay) {

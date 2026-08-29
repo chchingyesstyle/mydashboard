@@ -91,9 +91,8 @@ struct LayoutResult {
 };
 
 // Populates the right-hand weather/electricity column identically for every
-// screen. The left-hand column comes from exactly one of rows (Commute /
-// AllDepartures), dailyRows (SevenDayWeather), or hourlyRows
-// (TwelveHourWeather), matching layout.screen.
+// screen. Forecast populates both dailyRows and hourlyRows for the combined
+// left-column view; other screens populate their matching row collection.
 LayoutResult computeLayout(const DashboardModel& model, int maxRows, int batteryPercent = -1,
                            const std::string& lastRefreshText = "",
                            Screen screen = Screen::Commute);
@@ -101,9 +100,6 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
 int batteryPercentFromVoltage(double voltage);
 
 WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode);
-
-// Keep hourly forecast column headings below the global title row.
-int hourlyForecastHeaderBaseline(int headerHeight);
 
 // Day of week (0=Sunday..6=Saturday) for a Gregorian calendar date, via
 // Sakamoto's algorithm.

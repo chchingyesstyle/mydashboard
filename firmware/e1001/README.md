@@ -89,37 +89,41 @@ Not Modified, skipping redraw` if nothing changed since the last poll).
   Seeed's 3-month battery-life rating assumes, so expect meaningfully
   shorter battery life in practice. Selection logic is
   `sleepMinutesForHour()` in `lib/route_selector`.
-- **Six screens:** Commute (Watford -> Euston, WFJ-EUS), SevenDayWeather,
-  TwelveHourWeather, HongKongNews, UkNews, and AllDepartures (all Watford
-  Junction departures, WFJ-ALL). The forecast and news screens use WFJ-ALL,
+- **Five screens:** Commute (Watford -> Euston, WFJ-EUS), Forecast,
+  HongKongNews, UkNews, and AllDepartures (all Watford Junction departures,
+  WFJ-ALL). The forecast and news screens use WFJ-ALL,
   since the Watford weather/news panels do not depend on the destination
   filter. Every screen keeps the same right-hand weather/electricity column.
-  Forecast layouts use fixed columns: every daily and hourly entry includes
-  its rain chance, and seven-day temperatures use a compact `lowC / highC`
-  form. News screens show the feed source/update state, three wrapped top
+  The combined Forecast screen shows all 12 hourly entries in a 6-by-2 grid
+  above all seven daily rows; every entry includes its rain chance, and daily
+  temperatures use a compact `lowC / highC` form. News screens show the
+  feed source/update state, three wrapped top
   stories, and six latest headlines (wrapping to two lines when needed) with
   Europe/London publication times;
   Hong Kong uses Traditional Chinese labels and glyphs while the UK screen
   uses English labels.
-  On the Next 12 Hours screen, the Rain/Temp column headings sit in a
-  dedicated strip below the global title so they never overlap the screen
-  title.
   Time-based default: Commute from 6am-9am local time, otherwise
-  SevenDayWeather.
+  Forecast.
   Outside Commute, each departure row also shows its destination and
   operator code (e.g. "to London Euston LM") since the destination is no
   longer implied by the route.
 - **Manual refresh:** press the **right white button** (GPIO4) to wake and
   refresh immediately, bypassing the timer, without changing the screen.
 - **Screen override:** press the **left white button** (GPIO5) to wake and
-  advance one step around the fixed 6-screen cycle (`kScreenCycle` in
-  `lib/route_selector`: Commute -> SevenDayWeather -> TwelveHourWeather ->
-  HongKongNews -> UkNews -> AllDepartures -> back to Commute) from wherever it
-  last was, so 6 consecutive presses always land back on the screen you
+  advance one step around the fixed 5-screen cycle (`kScreenCycle` in
+  `lib/route_selector`: Commute -> Forecast -> HongKongNews -> UkNews ->
+  AllDepartures -> back to Commute) from wherever it last was, so 5
+  consecutive presses always land back on the screen you
   started from.
   Any other wake — the timer or the plain refresh button — realigns the
   cycle position to the current time-based default. The cycle index
   persists across deep sleep in `RTC_DATA_ATTR int screenCycleIndex`.
+  The last successfully rendered screen is stored separately from the selected
+  cycle position. A changed screen deliberately omits the previous ETag so
+  screens sharing `WFJ-ALL` receive a response body and redraw instead of
+  remaining on the old screen after a `304 Not Modified` response. The new
+  cycle position is committed only after a successful render, so a network or
+  parse failure cannot make the next button press skip a visible screen.
   Both buttons wake the device via `esp_sleep_enable_ext1_wakeup()`;
   `esp_sleep_get_ext1_wakeup_status()` tells `main.cpp` which one fired.
   The **green button** (GPIO3) is deliberately not used for either of

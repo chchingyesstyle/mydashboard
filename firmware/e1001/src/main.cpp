@@ -22,7 +22,7 @@ constexpr uint64_t kFallbackSleepMicroseconds = 5ULL * 60 * 1000000;
 constexpr gpio_num_t kRefreshButtonPin = GPIO_NUM_4;
 // Left white button. GPIO5 is not a boot-strapping pin, so it's safe to use
 // as a second wake source. Each press advances one step around the fixed
-// 6-screen cycle (kScreenCycle), so 6 consecutive presses always return to
+// 5-screen cycle (kScreenCycle), so 5 consecutive presses always return to
 // the screen you started from; any other wake (timer or the plain refresh
 // button) realigns the cycle position to the current time-based default.
 constexpr gpio_num_t kOverrideButtonPin = GPIO_NUM_5;
@@ -30,13 +30,13 @@ constexpr uint64_t kButtonWakeMask =
     (1ULL << kRefreshButtonPin) | (1ULL << kOverrideButtonPin);
 RTC_DATA_ATTR char storedEtag[128] = "";
 RTC_DATA_ATTR int screenCycleIndex = 0;
+RTC_DATA_ATTR int renderedScreenCycleIndex = -1;
 
 const char* screenName(Screen screen) {
   switch (screen) {
     case Screen::Commute: return "Commute";
     case Screen::AllDepartures: return "AllDepartures";
-    case Screen::SevenDayWeather: return "SevenDayWeather";
-    case Screen::TwelveHourWeather: return "TwelveHourWeather";
+    case Screen::Forecast: return "Forecast";
     case Screen::HongKongNews: return "HongKongNews";
     case Screen::UkNews: return "UkNews";
   }
@@ -79,8 +79,9 @@ void setup() {
   bool hasTime = syncLocalTime(timeinfo);
   Screen timeBasedScreen =
       hasTime ? timeBasedDefaultScreen(timeinfo.tm_hour) : Screen::Commute;
-  screenCycleIndex = nextScreenCycleIndex(screenCycleIndex, overridePressed, timeBasedScreen);
-  Screen screen = screenForCycleIndex(screenCycleIndex);
+  const int requestedScreenCycleIndex =
+      nextScreenCycleIndex(screenCycleIndex, overridePressed, timeBasedScreen);
+  Screen screen = screenForCycleIndex(requestedScreenCycleIndex);
   std::string lastRefreshText = hasTime ? formatLocalTime(timeinfo) : "";
   uint64_t sleepMicroseconds = (hasTime ? sleepMinutesForHour(timeinfo.tm_hour) : 5) *
                                 60ULL * 1000000;
@@ -93,7 +94,11 @@ void setup() {
   Serial0.print(static_cast<unsigned long>(sleepMicroseconds / 60ULL / 1000000));
   Serial0.println("min");
 
-  FetchResult fetch = fetchDashboard(std::string(storedEtag), routeIdForScreen(screen));
+  const std::string requestEtag =
+      requestEtagForScreen(std::string(storedEtag), requestedScreenCycleIndex,
+                           renderedScreenCycleIndex);
+  FetchResult fetch = fetchDashboard(requestEtag, routeIdForScreen(screen));
+  bool renderSucceeded = false;
 
   if (fetch.status == FetchStatus::NotModified) {
     Serial0.println("304 Not Modified, skipping redraw");
@@ -106,6 +111,7 @@ void setup() {
       renderDashboard(layout);
       strncpy(storedEtag, fetch.etag.c_str(), sizeof(storedEtag) - 1);
       storedEtag[sizeof(storedEtag) - 1] = '\0';
+      renderSucceeded = true;
       Serial0.println("Rendered updated dashboard");
     } else {
       Serial0.print("Parse failed, keeping existing screen: ");
@@ -113,6 +119,12 @@ void setup() {
     }
   } else {
     Serial0.println("Fetch failed, keeping existing screen");
+  }
+
+  screenCycleIndex = screenCycleIndexAfterRender(
+      screenCycleIndex, requestedScreenCycleIndex, renderSucceeded);
+  if (renderSucceeded) {
+    renderedScreenCycleIndex = screenCycleIndex;
   }
 
   goToSleep(sleepMicroseconds);

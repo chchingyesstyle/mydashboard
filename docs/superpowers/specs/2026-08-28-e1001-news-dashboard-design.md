@@ -13,10 +13,10 @@ Hong Kong screen renders Traditional Chinese; the UK screen renders English.
 - The Cloudflare Worker fetches, normalizes, and caches public RSS feeds; the
   E1001 continues to make its single dashboard API request and never fetches
   RSS directly.
-- Add `Hong Kong News` and `UK News` to the E1001 screen cycle after the two
-  forecast screens and before `All Departures`.
+- Add `Hong Kong News` and `UK News` to the E1001 screen cycle after Forecast
+  and before `All Departures`.
 - Keep the existing automatic default screens: commute during 06:00–08:59
-  local time, then the seven-day forecast. News appears only through the
+  local time, then the combined Forecast screen. News appears only through the
   override-button cycle.
 - Keep the entire right column unchanged for both news screens: weather in its
   top half and electricity in its bottom half.
@@ -100,10 +100,11 @@ per story. `news` remains optional in the public additive contract: an absent
 object becomes two unavailable panels in the new firmware, so existing clients
 continue to accept the response during a staged Worker and firmware deploy.
 
-`Screen` gains `HongKongNews` and `UkNews`. The six-screen fixed cycle is:
+`Screen` gains `HongKongNews` and `UkNews`. After the combined-forecast
+extension, the five-screen fixed cycle is:
 
 ```text
-Commute → 7-Day Forecast → Next 12 Hours → Hong Kong News → UK News → All Departures
+Commute → Forecast → Hong Kong News → UK News → All Departures
 ```
 
 Both news screens request the existing `WFJ-ALL` dashboard route so their
@@ -139,7 +140,7 @@ else.
   when news changes.
 - E1001 parser tests cover valid panels, malformed stories, stale, and
   unavailable states. Route-selector and layout tests cover both extra screens,
-  the six-screen cycle, title grouping, and unchanged right-column data.
+  the five-screen cycle, title grouping, and unchanged right-column data.
 - Device rendering is verified by building for `xiao_esp32s3`, flashing COM3,
   and visually checking a real Traditional Chinese RTHK headline plus the UK
   screen, weather, electricity, and a news-failure fallback.

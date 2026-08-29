@@ -254,10 +254,6 @@ WeatherIconKind weatherIconKindFor(bool hasWeatherCode, int weatherCode) {
   return WeatherIconKind::Cloud;
 }
 
-int hourlyForecastHeaderBaseline(int headerHeight) {
-  return headerHeight + 18;
-}
-
 int batteryPercentFromVoltage(double voltage) {
   struct Point { double voltage; int percent; };
   static const Point kCurve[] = {
@@ -336,7 +332,16 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
       }
       layout.rows.push_back(row);
     }
-  } else if (screen == Screen::SevenDayWeather) {
+  } else if (screen == Screen::Forecast) {
+    for (const auto& hour : model.weather.hourlyForecast) {
+      HourlyForecastRow row;
+      row.timeText = extractTimeOfDay(hour.time);
+      row.icon = weatherIconKindFor(true, hour.weatherCode);
+      row.hasRainChance = true;
+      row.rainChanceText = formatPercent(hour.rainChancePercent);
+      row.tempText = formatRoundedWhole(hour.temperatureC) + "C";
+      layout.hourlyRows.push_back(row);
+    }
     for (const auto& day : model.weather.dailyForecast) {
       DailyForecastRow row;
       row.dateText = formatDailyDateText(day.date);
@@ -346,16 +351,6 @@ LayoutResult computeLayout(const DashboardModel& model, int maxRows, int battery
       row.tempRangeText = formatRoundedWhole(day.temperatureMinC) + "C / " +
                            formatRoundedWhole(day.temperatureMaxC) + "C";
       layout.dailyRows.push_back(row);
-    }
-  } else if (screen == Screen::TwelveHourWeather) {
-    for (const auto& hour : model.weather.hourlyForecast) {
-      HourlyForecastRow row;
-      row.timeText = extractTimeOfDay(hour.time);
-      row.icon = weatherIconKindFor(true, hour.weatherCode);
-      row.hasRainChance = true;
-      row.rainChanceText = formatPercent(hour.rainChancePercent);
-      row.tempText = formatRoundedWhole(hour.temperatureC) + "C";
-      layout.hourlyRows.push_back(row);
     }
   } else if (screen == Screen::HongKongNews) {
     appendNewsRows(model.news.hongKong, true, layout);

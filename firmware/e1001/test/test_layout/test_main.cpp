@@ -505,17 +505,30 @@ void test_weekday_index_for_known_anchor_dates() {
   TEST_ASSERT_EQUAL(1, weekdayIndexFor(2024, 1, 1));   // Monday
 }
 
-void test_daily_forecast_layout_uses_compact_aligned_weather_columns() {
+void test_combined_forecast_layout_populates_hourly_and_daily_rows() {
   DashboardModel model;
   model.weather.dailyForecast.push_back(
       DailyForecastDay{"2026-08-24", 2, 13.2, 26.8, 60});
   model.weather.dailyForecast.push_back(
       DailyForecastDay{"2026-08-25", 61, 14.1, 24.5, 80});
+  model.weather.hourlyForecast.push_back(
+      HourlyForecastEntry{"2026-08-24T09:00", 0, 21.6, 5});
+  model.weather.hourlyForecast.push_back(
+      HourlyForecastEntry{"2026-08-24T10:00", 95, 19.2, 90});
+  for (int i = 2; i < 7; i++) {
+    model.weather.dailyForecast.push_back(
+        DailyForecastDay{"2026-08-26", 3, 12.0, 20.0, 30});
+  }
+  for (int i = 2; i < 12; i++) {
+    model.weather.hourlyForecast.push_back(
+        HourlyForecastEntry{"2026-08-24T11:00", 3, 18.0, 30});
+  }
 
-  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::SevenDayWeather);
+  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::Forecast);
 
-  TEST_ASSERT_EQUAL_STRING("7-Day Forecast", layout.routeTitle.c_str());
-  TEST_ASSERT_EQUAL(2, (int)layout.dailyRows.size());
+  TEST_ASSERT_EQUAL_STRING("Forecast", layout.routeTitle.c_str());
+  TEST_ASSERT_EQUAL(7, (int)layout.dailyRows.size());
+  TEST_ASSERT_EQUAL(12, (int)layout.hourlyRows.size());
 
   const DailyForecastRow& monday = layout.dailyRows[0];
   TEST_ASSERT_EQUAL_STRING("Mon 24", monday.dateText.c_str());
@@ -530,23 +543,6 @@ void test_daily_forecast_layout_uses_compact_aligned_weather_columns() {
   TEST_ASSERT_TRUE(tuesday.hasRainChance);
   TEST_ASSERT_EQUAL_STRING("80%", tuesday.rainChanceText.c_str());
   TEST_ASSERT_EQUAL_STRING("14C / 25C", tuesday.tempRangeText.c_str());
-}
-
-void test_hourly_forecast_headings_start_below_global_header() {
-  TEST_ASSERT_EQUAL(54, hourlyForecastHeaderBaseline(36));
-}
-
-void test_hourly_forecast_layout_keeps_rain_chance_for_every_hour() {
-  DashboardModel model;
-  model.weather.hourlyForecast.push_back(
-      HourlyForecastEntry{"2026-08-24T09:00", 0, 21.6, 5});
-  model.weather.hourlyForecast.push_back(
-      HourlyForecastEntry{"2026-08-24T10:00", 95, 19.2, 90});
-
-  LayoutResult layout = computeLayout(model, kMaxRows, -1, "", Screen::TwelveHourWeather);
-
-  TEST_ASSERT_EQUAL_STRING("Next 12 Hours", layout.routeTitle.c_str());
-  TEST_ASSERT_EQUAL(2, (int)layout.hourlyRows.size());
 
   const HourlyForecastRow& first = layout.hourlyRows[0];
   TEST_ASSERT_EQUAL_STRING("09:00", first.timeText.c_str());
@@ -566,13 +562,24 @@ void test_hourly_forecast_layout_keeps_rain_chance_for_every_hour() {
 void test_forecast_layout_passes_through_status_battery_and_refresh_text() {
   DashboardModel model;
   model.status = DashboardStatus::Partial;
+  model.weather.hasTemperatureC = true;
+  model.weather.temperatureC = 19.8;
+  model.weather.hasCondition = true;
+  model.weather.condition = "Partly cloudy";
+  model.electricity.prices.push_back(
+      ElectricityPriceSlot{"2026-08-24T09:00:00+01:00",
+                           "2026-08-24T09:30:00+01:00", 12.4});
 
   LayoutResult layout =
-      computeLayout(model, kMaxRows, 42, "Mon 24 Aug  09:00", Screen::SevenDayWeather);
+      computeLayout(model, kMaxRows, 42, "Mon 24 Aug  09:00", Screen::Forecast);
 
   TEST_ASSERT_EQUAL_STRING("Partial", layout.statusBannerText.c_str());
   TEST_ASSERT_EQUAL(42, layout.batteryPercent);
   TEST_ASSERT_EQUAL_STRING("Mon 24 Aug  09:00", layout.lastRefreshText.c_str());
+  TEST_ASSERT_TRUE(layout.hasWeatherText);
+  TEST_ASSERT_EQUAL_STRING("19.8C", layout.weatherText.c_str());
+  TEST_ASSERT_EQUAL(1, (int)layout.electricityRows.size());
+  TEST_ASSERT_EQUAL_STRING("09:00", layout.electricityRows[0].time.c_str());
 }
 
 void test_hong_kong_news_layout_selects_traditional_chinese_panel() {
@@ -687,9 +694,7 @@ int main(int argc, char **argv) {
   RUN_TEST(test_battery_percent_from_voltage_interpolates_between_points);
   RUN_TEST(test_battery_percent_from_voltage_clamps_out_of_range);
   RUN_TEST(test_weekday_index_for_known_anchor_dates);
-  RUN_TEST(test_daily_forecast_layout_uses_compact_aligned_weather_columns);
-  RUN_TEST(test_hourly_forecast_headings_start_below_global_header);
-  RUN_TEST(test_hourly_forecast_layout_keeps_rain_chance_for_every_hour);
+  RUN_TEST(test_combined_forecast_layout_populates_hourly_and_daily_rows);
   RUN_TEST(test_forecast_layout_passes_through_status_battery_and_refresh_text);
   RUN_TEST(test_hong_kong_news_layout_selects_traditional_chinese_panel);
   RUN_TEST(test_uk_news_layout_uses_english_headings_and_panel);

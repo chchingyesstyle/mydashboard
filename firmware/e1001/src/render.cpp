@@ -332,92 +332,94 @@ void drawElectricity(const LayoutResult& layout) {
   }
 }
 
-// Both forecast row sets render in the left column only (0..kColumnDividerX),
-// leaving the right column's weather+electricity untouched, same split as
-// the departures screens.
+// Both time scales fit in the left column (0..kColumnDividerX), leaving the
+// right column's weather and electricity panel untouched.
+void drawForecastRows(const LayoutResult& layout) {
+  constexpr int kHourlyLabelBaseline = 52;
+  constexpr int kHourlyGridTop = 58;
+  constexpr int kHourlyColumnWidth = kColumnDividerX / 6;
+  constexpr int kHourlyRowHeight = 78;
+  constexpr int kHourlyGridBottom = kHourlyGridTop + kHourlyRowHeight * 2;
 
-void drawDailyForecastRows(const LayoutResult& layout) {
-  const int rowHeight = (kScreenHeight - kHeaderHeight) / 7;
-  const int iconScale100 = 45;  // drawWeatherIcon scale, as a percent
-  constexpr int kIconCenterX = 180;
-  constexpr int kRainX = 230;
-  constexpr int kTemperatureRangeX = 350;
+  display.setFont(&FreeSansBold9pt7b);
+  display.setCursor(8, kHourlyLabelBaseline);
+  display.print("Next 12 Hours");
+  display.drawFastHLine(0, kHourlyGridTop - 1, kColumnDividerX, GxEPD_BLACK);
+  u8g2.setFont(u8g2_font_6x12_tr);
+  u8g2.setFontMode(1);
+  u8g2.setFontDirection(0);
+  u8g2.setForegroundColor(GxEPD_BLACK);
 
-  display.setFont(&FreeSans9pt7b);
-  display.setCursor(kRainX, 25);
-  display.print("Rain");
-  display.setCursor(kTemperatureRangeX, 25);
-  display.print("Low / High");
-
-  int y = kHeaderHeight;
-  for (const auto& row : layout.dailyRows) {
-    int midY = y + rowHeight / 2;
-
-    display.setFont(&FreeSansBold12pt7b);
-    display.setCursor(10, midY + 6);
-    display.print(row.dateText.c_str());
-
-    drawWeatherIcon(row.icon, kIconCenterX, midY, iconScale100 / 100.0);
-
-    display.setFont(&FreeSans12pt7b);
-    display.setCursor(kRainX, midY + 6);
-    display.print(row.rainChanceText.c_str());
-
-    display.setFont(&FreeSansBold12pt7b);
-    display.setCursor(kTemperatureRangeX, midY + 6);
-    display.print(row.tempRangeText.c_str());
-
-    y += rowHeight;
-    if (y < kScreenHeight) {
-      display.drawFastHLine(0, y, kColumnDividerX, GxEPD_BLACK);
-    }
-  }
-}
-
-void drawHourlyForecastRows(const LayoutResult& layout) {
-  const int rowHeight = (kScreenHeight - kHeaderHeight) / 6;
-  const int columnWidth = kColumnDividerX / 2;
-  const int iconScale100 = 30;
-  constexpr int kIconCenterOffset = 85;
-  constexpr int kRainOffset = 130;
-  constexpr int kTemperatureOffset = 190;
-
-  display.setFont(&FreeSans9pt7b);
-  const int headerBaseline = hourlyForecastHeaderBaseline(kHeaderHeight);
-  for (int column = 0; column < 2; column++) {
-    int columnX = column * columnWidth;
-    display.setCursor(columnX + kRainOffset, headerBaseline);
-    display.print("Rain");
-    display.setCursor(columnX + kTemperatureOffset, headerBaseline);
-    display.print("Temp");
-  }
-
-  for (size_t i = 0; i < layout.hourlyRows.size(); i++) {
+  const size_t hourlyCount = layout.hourlyRows.size() < 12
+                                 ? layout.hourlyRows.size()
+                                 : 12;
+  for (size_t i = 0; i < hourlyCount; i++) {
     const auto& row = layout.hourlyRows[i];
-    int column = static_cast<int>(i) < 6 ? 0 : 1;
-    int rowInColumn = static_cast<int>(i) % 6;
-    int columnX = column * columnWidth;
-    int y = kHeaderHeight + rowInColumn * rowHeight;
-    int midY = y + rowHeight / 2;
-    display.setFont(&FreeSansBold12pt7b);
-    display.setCursor(columnX + 6, midY + 6);
+    const int column = static_cast<int>(i % 6);
+    const int gridRow = static_cast<int>(i / 6);
+    const int x = column * kHourlyColumnWidth;
+    const int y = kHourlyGridTop + gridRow * kHourlyRowHeight;
+
+    display.setFont(&FreeSansBold9pt7b);
+    display.setCursor(x + 10, y + 17);
     display.print(row.timeText.c_str());
 
-    drawWeatherIcon(row.icon, columnX + kIconCenterOffset, midY, iconScale100 / 100.0);
+    drawWeatherIcon(row.icon, x + kHourlyColumnWidth / 2, y + 40, 0.28);
 
+    u8g2.drawUTF8(x + 8, y + 70, row.tempText.c_str());
+    const int rainWidth = u8g2.getUTF8Width(row.rainChanceText.c_str());
+    u8g2.drawUTF8(x + kHourlyColumnWidth - 8 - rainWidth,
+                  y + 70, row.rainChanceText.c_str());
+  }
+
+  for (int column = 1; column < 6; column++) {
+    display.drawFastVLine(column * kHourlyColumnWidth, kHourlyGridTop,
+                          kHourlyGridBottom - kHourlyGridTop, GxEPD_BLACK);
+  }
+  display.drawFastHLine(0, kHourlyGridTop + kHourlyRowHeight,
+                        kColumnDividerX, GxEPD_BLACK);
+
+  constexpr int kDailyHeadingBaseline = kHourlyGridBottom + 19;
+  constexpr int kDailyRowsTop = kHourlyGridBottom + 26;
+  constexpr int kDailyRowHeight = 34;
+  constexpr int kDailyIconCenterX = 135;
+  constexpr int kDailyRainX = 185;
+  constexpr int kDailyTemperatureX = 330;
+
+  display.drawFastHLine(0, kHourlyGridBottom, kColumnDividerX, GxEPD_BLACK);
+  display.setFont(&FreeSansBold9pt7b);
+  display.setCursor(8, kDailyHeadingBaseline);
+  display.print("7 Days");
+  display.setFont(&FreeSans9pt7b);
+  display.setCursor(kDailyRainX, kDailyHeadingBaseline);
+  display.print("Rain");
+  display.setCursor(kDailyTemperatureX, kDailyHeadingBaseline);
+  display.print("Low / High");
+
+  const size_t dailyCount = layout.dailyRows.size() < 7
+                                ? layout.dailyRows.size()
+                                : 7;
+  for (size_t i = 0; i < dailyCount; i++) {
+    const auto& row = layout.dailyRows[i];
+    const int y = kDailyRowsTop + static_cast<int>(i) * kDailyRowHeight;
+    const int midY = y + kDailyRowHeight / 2;
+
+    display.setFont(&FreeSansBold9pt7b);
+    display.setCursor(8, midY + 5);
+    display.print(row.dateText.c_str());
+    drawWeatherIcon(row.icon, kDailyIconCenterX, midY, 0.28);
     display.setFont(&FreeSans9pt7b);
-    display.setCursor(columnX + kRainOffset, midY + 5);
+    display.setCursor(kDailyRainX, midY + 5);
     display.print(row.rainChanceText.c_str());
+    display.setFont(&FreeSansBold9pt7b);
+    display.setCursor(kDailyTemperatureX, midY + 5);
+    display.print(row.tempRangeText.c_str());
 
-    display.setFont(&FreeSansBold12pt7b);
-    display.setCursor(columnX + kTemperatureOffset, midY + 6);
-    display.print(row.tempText.c_str());
-
-    if (rowInColumn > 0) {
-      display.drawFastHLine(columnX, y, columnWidth, GxEPD_BLACK);
+    if (i + 1 < dailyCount) {
+      display.drawFastHLine(0, y + kDailyRowHeight,
+                            kColumnDividerX, GxEPD_BLACK);
     }
   }
-  display.drawFastVLine(columnWidth, kHeaderHeight, kScreenHeight - kHeaderHeight, GxEPD_BLACK);
 }
 
 void drawNewsRows(const LayoutResult& layout) {
@@ -512,11 +514,8 @@ void renderDashboard(const LayoutResult& layout) {
       case Screen::AllDepartures:
         drawDepartureRows(layout);
         break;
-      case Screen::SevenDayWeather:
-        drawDailyForecastRows(layout);
-        break;
-      case Screen::TwelveHourWeather:
-        drawHourlyForecastRows(layout);
+      case Screen::Forecast:
+        drawForecastRows(layout);
         break;
       case Screen::HongKongNews:
       case Screen::UkNews:
